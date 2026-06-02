@@ -174,9 +174,9 @@ export default function KPIDetailModal({ kpi, onClose, showAnalysis = true }) {
     const availableRanges = useMemo(() => getKpiTimeRanges(kpi), [kpi]);
     const activeTimeRange = availableRanges.includes(timeRange) ? timeRange : availableRanges[0];
     const cfg = TIME_CFG[activeTimeRange] || TIME_CFG['24H'];
-    const hist = useMemo(() => buildHist(numValue, kpi?.trend, cfg.n), [numValue, kpi?.trend, activeTimeRange]);
+    const hist = useMemo(() => buildHist(numValue, kpi?.trend, cfg.n), [numValue, kpi?.trend, cfg]);
     const pred = useMemo(() => buildPred(hist, kpi?.trend), [hist, kpi?.trend]);
-    const histLabels = useMemo(() => Array.from({ length: cfg.n }, (_, i) => cfg.lbl(i)), [activeTimeRange]);
+    const histLabels = useMemo(() => Array.from({ length: cfg.n }, (_, i) => cfg.lbl(i)), [cfg]);
     const predLabels = useMemo(() => Array.from({ length: 8 }, (_, i) => `+${i + 1}h`), []);
     const allLabels = useMemo(() => (showPrediction ? [...histLabels, ...predLabels] : histLabels), [showPrediction, histLabels, predLabels]);
     /* Threshold reference values

@@ -5,9 +5,8 @@ import React, { useMemo, useState } from 'react';
 import { useCacco } from '../services/CaccoData';
 import { useNow } from '../utils/useNow';
 import { KpiCard, StatusCard, AlertCard, IntelCard, RecommendationCard } from '../components/cards';
-import { Panel, Chip, Dot } from '../components/ui';
+import { Panel, Chip } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { SEC_LEVEL } from '../utils/tone';
 import { useT } from '../contexts/LanguageContext';
 import { executeRecommendation } from '../services/api';
 const STATUS_ORDER = ['BLK-A', 'BLK-B', 'BLK-C', 'MAX', 'MED', 'VIS'];
@@ -17,7 +16,6 @@ export default function CommandCenter() {
     const { t } = useT();
     const [toast, setToast] = useState(null);
     const statusZones = useMemo(() => STATUS_ORDER.map((id) => c.zones.find((z) => z.id === id)).filter(Boolean), [c.zones]);
-    const sec = SEC_LEVEL[c.facility.securityLevel];
     const sortedAlerts = useMemo(() => [...c.alerts].sort((a, b) => b.createdAtMs - a.createdAtMs), [c.alerts]);
     const fire = (rec) => {
         executeRecommendation(rec.id).then((r) => {
@@ -82,7 +80,7 @@ export default function CommandCenter() {
             const color = t.status === 'standby' ? '#10b981' : t.status === 'deployed' ? '#f59e0b' : t.status === 'responding' ? '#ef4444' : '#526278';
             return (<div key={t.id} className="relative rounded-lg border border-app-border p-3" style={{ background: 'var(--app-bg-deep)' }}>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="dot dot-pulse" style={{ background: 'var(--app-accent)' }}/>
+                  <span className="dot dot-pulse" style={{ background: color }}/>
                   <span className="font-mono text-[11px] font-bold text-app-text">{t.callsign}</span>
                 </div>
                 <div className="space-y-0.5">

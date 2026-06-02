@@ -346,10 +346,8 @@ export function buildKpis(alerts) {
     const totalInmates = INMATES.length;
     const residentialCap = RESIDENTIAL.reduce((s, z) => s + z.capacity, 0);
     const occupancyPct = Math.round((totalInmates / residentialCap) * 100);
-    const onDuty = STAFF.filter((s) => s.status === 'on-duty' || s.status === 'responding').length;
     const activeAlerts = alerts.filter((a) => a.status === 'active' || a.status === 'dispatched').length;
     const highRisk = INMATES.filter((m) => m.risk === 'high' || m.risk === 'extreme').length;
-    const threatIndex = Math.round(INMATES.reduce((s, m) => s + m.threatScore, 0) / INMATES.length + 4);
     const mk = (id, label, value, previous, rag, opts = {}) => {
         const deltaPct = previous === 0 ? 0 : +(((value - previous) / previous) * 100).toFixed(1);
         const trend = value > previous ? 'up' : value < previous ? 'down' : 'flat';

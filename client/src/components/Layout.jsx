@@ -10,7 +10,6 @@ import { Chip } from './ui';
 import { IntelCard, AlertCard, RecommendationCard } from './cards';
 import { useCacco } from '../services/CaccoData';
 import { useT } from '../contexts/LanguageContext';
-import { SEC_LEVEL } from '../utils/tone';
 import { clockTime, clockDate, zulu } from '../utils/format';
 const VERSION = 'v3.4.1';
 function resolveBadge(key, s) {
@@ -58,13 +57,11 @@ export default function Layout({ children }) {
     const { t, lang, toggleLang } = useT();
     const [collapsed, setCollapsed] = useState(false);
     const [drawer, setDrawer] = useState(null);
-    const [secMenu, setSecMenu] = useState(false);
     const [now, setNow] = useState(() => new Date());
     const [query, setQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const searchRef = useRef(null);
     const searchInput = useRef(null);
-    const secRef = useRef(null);
     useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
     useEffect(() => {
         const h = (e) => {
@@ -75,7 +72,6 @@ export default function Layout({ children }) {
             }
             if (e.key === 'Escape') {
                 setShowSearch(false);
-                setSecMenu(false);
             }
         };
         document.addEventListener('keydown', h);
@@ -85,9 +81,6 @@ export default function Layout({ children }) {
         const h = (e) => {
             if (searchRef.current && !searchRef.current.contains(e.target)) {
                 setShowSearch(false);
-            }
-            if (secRef.current && !secRef.current.contains(e.target)) {
-                setSecMenu(false);
             }
         };
         document.addEventListener('mousedown', h);
@@ -101,7 +94,6 @@ export default function Layout({ children }) {
             return [];
         return SEARCH.filter((s) => (s.label + ' ' + s.desc).toLowerCase().includes(q)).slice(0, 8);
     }, [query]);
-    const sec = SEC_LEVEL[facility.securityLevel];
     const pageTitle = PAGE_TITLE[location.pathname] ?? 'Command Center';
     return (<div className={`flex h-screen w-screen flex-col overflow-hidden${facility.emergencyActive ? ' emergency-overlay' : ''}`} style={{ background: 'var(--app-bg)' }}>
       <div className="flex flex-1 overflow-hidden">
@@ -129,7 +121,11 @@ export default function Layout({ children }) {
                       <button onClick={() => navigate(item.path)} className={`nav-item ${active ? 'active' : ''}`} title={collapsed ? `${item.label} — ${item.description}` : item.description}>
                         <Icon name={item.icon} className="w-[18px] h-[18px] shrink-0"/>
                         {!collapsed && <span className="truncate">{t(`nav.item.${item.key}`)}</span>}
-
+                        {!collapsed && badge && (
+                          <span className="ml-auto font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: badge.tone + '22', color: badge.tone }}>
+                            {fmtBadge(badge.count)}
+                          </span>
+                        )}
                       </button>
                     </div>);
             })}

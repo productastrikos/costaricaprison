@@ -1,51 +1,57 @@
-/* ════════════════════════════════════════════════════════════════════
-   CACCO Command Platform — Application root
-   React Router v6 · CaccoProvider · all 11 routes
-   ════════════════════════════════════════════════════════════════════ */
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CaccoProvider } from './services/CaccoData';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Layout from './components/Layout';
-/* ── Page imports ───────────────────────────────────────────────────── */
-import CommandCenter from './pages/CommandCenter';
-import SecurityOperations from './pages/SecurityOperations';
-import SurveillanceCenter from './pages/SurveillanceCenter';
-import InmateIntelligence from './pages/InmateIntelligence';
-import StaffOperations from './pages/StaffOperations';
-import RehabilitationPrograms from './pages/RehabilitationPrograms';
-import IncidentManagement from './pages/IncidentManagement';
-import AIAnalytics from './pages/AIAnalytics';
-import DigitalTwin from './pages/DigitalTwin';
-import Reports from './pages/Reports';
-import SystemAdmin from './pages/SystemAdmin';
+import ErrorBoundary from './components/ErrorBoundary';
+
+const CommandCenter       = lazy(() => import('./pages/CommandCenter'));
+const SecurityOperations  = lazy(() => import('./pages/SecurityOperations'));
+const SurveillanceCenter  = lazy(() => import('./pages/SurveillanceCenter'));
+const IncidentManagement  = lazy(() => import('./pages/IncidentManagement'));
+const InmateIntelligence  = lazy(() => import('./pages/InmateIntelligence'));
+const AIAnalytics         = lazy(() => import('./pages/AIAnalytics'));
+const StaffOperations     = lazy(() => import('./pages/StaffOperations'));
+const RehabilitationPrograms = lazy(() => import('./pages/RehabilitationPrograms'));
+const DigitalTwin         = lazy(() => import('./pages/DigitalTwin'));
+const Reports             = lazy(() => import('./pages/Reports'));
+const SystemAdmin         = lazy(() => import('./pages/SystemAdmin'));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[60vh]">
+      <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
 export default function App() {
-    return (<LanguageProvider>
-      <CaccoProvider>
-      <BrowserRouter>
-        <Layout>
-          <Routes>
-            {/* Command */}
-            <Route path="/" element={<CommandCenter />}/>
-            {/* Operations */}
-            <Route path="/security" element={<SecurityOperations />}/>
-            <Route path="/surveillance" element={<SurveillanceCenter />}/>
-            <Route path="/incidents" element={<IncidentManagement />}/>
-            {/* Intelligence */}
-            <Route path="/intelligence" element={<InmateIntelligence />}/>
-            <Route path="/analytics" element={<AIAnalytics />}/>
-            {/* Facility */}
-            <Route path="/staff" element={<StaffOperations />}/>
-            <Route path="/rehabilitation" element={<RehabilitationPrograms />}/>
-            <Route path="/twin" element={<DigitalTwin />}/>
-            {/* Governance */}
-            <Route path="/reports" element={<Reports />}/>
-            <Route path="/admin" element={<SystemAdmin />}/>
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace/>}/>
-          </Routes>
-        </Layout>
-      </BrowserRouter>
-    </CaccoProvider>
-    </LanguageProvider>);
+  return (
+    <ErrorBoundary>
+      <LanguageProvider>
+        <CaccoProvider>
+          <BrowserRouter>
+            <Layout>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/"              element={<CommandCenter />} />
+                  <Route path="/security"      element={<SecurityOperations />} />
+                  <Route path="/surveillance"  element={<SurveillanceCenter />} />
+                  <Route path="/incidents"     element={<IncidentManagement />} />
+                  <Route path="/intelligence"  element={<InmateIntelligence />} />
+                  <Route path="/analytics"     element={<AIAnalytics />} />
+                  <Route path="/staff"         element={<StaffOperations />} />
+                  <Route path="/rehabilitation" element={<RehabilitationPrograms />} />
+                  <Route path="/twin"          element={<DigitalTwin />} />
+                  <Route path="/reports"       element={<Reports />} />
+                  <Route path="/admin"         element={<SystemAdmin />} />
+                  <Route path="*"             element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </Layout>
+          </BrowserRouter>
+        </CaccoProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
+  );
 }
