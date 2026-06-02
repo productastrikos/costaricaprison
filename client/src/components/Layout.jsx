@@ -38,7 +38,6 @@ function resolveBadge(key, s) {
         default: return null;
     }
 }
-const fmtBadge = (n) => (n > 99 ? '99+' : String(n));
 /* ─── Search index ──────────────────────────────────────────────────── */
 const SEARCH = [
     ...NAV_FLAT.map((i) => ({ label: i.label, path: i.path, desc: i.description, icon: i.icon })),
@@ -116,16 +115,10 @@ export default function Layout({ children }) {
                 {collapsed && <div className="mx-3 my-2 h-px" style={{ background: 'var(--app-border)' }}/>}
                 {group.items.map((item) => {
                 const active = location.pathname === item.path;
-                const badge = resolveBadge(item.badge, cacco);
                 return (<div key={item.path} className="px-2">
                       <button onClick={() => navigate(item.path)} className={`nav-item ${active ? 'active' : ''}`} title={collapsed ? `${item.label} — ${item.description}` : item.description}>
                         <Icon name={item.icon} className="w-[18px] h-[18px] shrink-0"/>
                         {!collapsed && <span className="truncate">{t(`nav.item.${item.key}`)}</span>}
-                        {!collapsed && badge && (
-                          <span className="ml-auto font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: badge.tone + '22', color: badge.tone }}>
-                            {fmtBadge(badge.count)}
-                          </span>
-                        )}
                       </button>
                     </div>);
             })}

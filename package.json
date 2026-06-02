@@ -7,8 +7,12 @@
     "node": ">=18"
   },
   "scripts": {
-    "dev": "cd client && npm start",
+    "start": "node server.js",
     "build": "npm install --prefix client && npm run build --prefix client",
+    "dev": "cd client && npm start",
     "install:all": "cd client && npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
   }
 }
