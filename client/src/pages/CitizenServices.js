@@ -72,10 +72,10 @@ export default function Services() {
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard label="Total Requests" value={counts.total} icon={<IcoPeople />} color="text-blue-400"/>
-        <KPICard label="Open" value={counts.open} icon={<IcoPhone />} rag={counts.open > 5 ? 'warning' : 'normal'}/>
-        <KPICard label="In Progress" value={counts.inProgress} icon={<IcoHourglass />} color="text-amber-400"/>
-        <KPICard label="Resolved Today" value={counts.resolved} icon={<IcoCheck />} color="text-emerald-400" trend={8.3}/>
+        <KPICard label="Total de Solicitudes" value={counts.total} icon={<IcoPeople />} color="text-blue-400"/>
+        <KPICard label="Abierto" value={counts.open} icon={<IcoPhone />} rag={counts.open > 5 ? 'warning' : 'normal'}/>
+        <KPICard label="En Progreso" value={counts.inProgress} icon={<IcoHourglass />} color="text-amber-400"/>
+        <KPICard label="Resueltos Hoy" value={counts.resolved} icon={<IcoCheck />} color="text-emerald-400" trend={8.3}/>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

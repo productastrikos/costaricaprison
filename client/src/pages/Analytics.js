@@ -90,10 +90,10 @@ function AnalyticsTab() {
     };
     return (<div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard label="Overall Score" value={84} unit=" / 100" icon={<IcoLeaf />} color="text-emerald-400" trend={6.2}/>
-        <KPICard label="YoY Improvement" value={12.4} unit="%" icon={<IcoTrendUp />} color="text-blue-400"/>
-        <KPICard label="Target Gap" value={1} unit=" pts" icon={<IcoShield />} color="text-amber-400"/>
-        <KPICard label="Active Initiatives" value={INITIATIVES.filter(i => i.status !== 'completed').length} icon={<IcoGlobe />} color="text-indigo-400"/>
+        <KPICard label="Puntaje General" value={84} unit=" / 100" icon={<IcoLeaf />} color="text-emerald-400" trend={6.2}/>
+        <KPICard label="Mejora Interanual" value={12.4} unit="%" icon={<IcoTrendUp />} color="text-blue-400"/>
+        <KPICard label="Brecha con Meta" value={1} unit=" pts" icon={<IcoShield />} color="text-amber-400"/>
+        <KPICard label="Iniciativas Activas" value={INITIATIVES.filter(i => i.status !== 'completed').length} icon={<IcoGlobe />} color="text-indigo-400"/>
       </div>
       <div className="flex gap-2">
         {[{ key: 'trend', label: 'Trend' }, { key: 'breakdown', label: 'Breakdown' }].map(m => (<button key={m.key} onClick={() => setActiveMetric(m.key)} className="px-3 py-1.5 text-xs font-semibold rounded transition-all" style={{ background: activeMetric === m.key ? 'var(--app-accent-bg)' : 'transparent', border: `1px solid ${activeMetric === m.key ? 'var(--app-accent-border)' : 'var(--app-border)'}`, color: activeMetric === m.key ? 'var(--app-accent)' : 'var(--app-text-faint)' }}>
@@ -165,10 +165,10 @@ function WorkflowTab() {
     };
     return (<div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard label="Items In" value={totalIn} icon={<IcoBarChart />} color="text-blue-400"/>
-        <KPICard label="Items Out" value={totalOut} icon={<IcoCheck />} color="text-emerald-400" trend={4.1}/>
-        <KPICard label="Backlog" value={backlog} icon={<IcoHourglass />} color="text-amber-400"/>
-        <KPICard label="Avg Throughput" value={avgThroughput} unit="%" icon={<IcoShield />} rag={+avgThroughput < 80 ? 'warning' : 'normal'}/>
+        <KPICard label="Entradas" value={totalIn} icon={<IcoBarChart />} color="text-blue-400"/>
+        <KPICard label="Salidas" value={totalOut} icon={<IcoCheck />} color="text-emerald-400" trend={4.1}/>
+        <KPICard label="Acumulado" value={backlog} icon={<IcoHourglass />} color="text-amber-400"/>
+        <KPICard label="Rendimiento Promedio" value={avgThroughput} unit="%" icon={<IcoShield />} rag={+avgThroughput < 80 ? 'warning' : 'normal'}/>
       </div>
       <div className="flex gap-2">
         {['pipeline', 'chart'].map(v => (<button key={v} onClick={() => setView(v)} className="px-3 py-1.5 text-xs font-semibold rounded transition-all capitalize" style={{ background: view === v ? 'var(--app-accent-bg)' : 'transparent', border: `1px solid ${view === v ? 'var(--app-accent-border)' : 'var(--app-border)'}`, color: view === v ? 'var(--app-accent)' : 'var(--app-text-faint)' }}>
@@ -248,10 +248,10 @@ function MonitorTab() {
     return (<div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
-          <KPICard label="Total Output" value={totalOutput} unit=" units" icon={<IcoBolt />} color="text-indigo-400" trend={3.4}/>
-          <KPICard label="Online Units" value={`${onlineUnits}/${UNITS.length}`} icon={<IcoCheck />} color="text-emerald-400"/>
-          <KPICard label="Avg Uptime" value={avgUptime} unit="%" icon={<IcoSignal />} color="text-blue-400"/>
-          <KPICard label="Warnings" value={warningUnits} icon={<IcoThermometer />} rag={warningUnits > 0 ? 'warning' : 'normal'}/>
+          <KPICard label="Producción Total" value={totalOutput} unit=" units" icon={<IcoBolt />} color="text-indigo-400" trend={3.4}/>
+          <KPICard label="Unidades en Línea" value={`${onlineUnits}/${UNITS.length}`} icon={<IcoCheck />} color="text-emerald-400"/>
+          <KPICard label="Disponibilidad Promedio" value={avgUptime} unit="%" icon={<IcoSignal />} color="text-blue-400"/>
+          <KPICard label="Advertencias" value={warningUnits} icon={<IcoThermometer />} rag={warningUnits > 0 ? 'warning' : 'normal'}/>
         </div>
         <span className="text-[10px] px-2.5 py-1 rounded-full font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">● LIVE</span>
       </div>

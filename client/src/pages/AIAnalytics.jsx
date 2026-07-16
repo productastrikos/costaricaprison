@@ -4,7 +4,7 @@
    ════════════════════════════════════════════════════════════════════ */
 import React, { useMemo, useState } from 'react';
 import { useCacco } from '../services/CaccoData';
-import { Panel, MetricCard, Chip, PageHeader, Meter, Ring, Sparkline, Confidence, Dot } from '../components/ui';
+import { Panel, MetricCard, Chip, PageHeader, Meter, Ring, Sparkline, Confidence, Dot, ActionModal } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { RecommendationCard } from '../components/cards';
 import { RISK, THREAT } from '../utils/tone';
@@ -15,18 +15,31 @@ import { executeRecommendation } from '../services/api';
 const MODEL_SPARK = [72, 74, 73, 76, 79, 77, 80, 82, 78, 84, 86, 85, 87, 89, 88, 91];
 const VIOLENCE_SPARK = [14, 16, 13, 17, 19, 15, 22, 20, 18, 24, 21, 23, 25, 22, 27, 26];
 const ESCAPE_SPARK = [3, 2, 4, 3, 2, 5, 4, 3, 6, 5, 4, 7, 5, 6, 5, 8];
-const MODELS = [
-    { title: 'Threat Escalation Predictor', desc: 'LSTM-based temporal model · 72h forecast window · trained on 5y incident data', accuracy: 91, lastRun: '4 min ago', status: 'active' },
-    { title: 'Behavioral Pattern Mapper', desc: 'Graph neural network · inmate co-occurrence · crime pattern correlation · behavioral deviation analysis', accuracy: 87, lastRun: '18 min ago', status: 'active' },
-    { title: 'Violence Risk Scorer', desc: 'Gradient boost ensemble · behavioural features · historical incidents', accuracy: 84, lastRun: '9 min ago', status: 'active' },
-    { title: 'Contraband Flow Detector', desc: 'Anomaly detection · visitor pattern analysis · movement correlation', accuracy: 79, lastRun: '31 min ago', status: 'active' },
-    { title: 'Escape Risk Classifier', desc: 'Random forest · perimeter events · movement logs · psych flags', accuracy: 93, lastRun: '12 min ago', status: 'active' },
-    { title: 'Recidivism Predictor', desc: 'Cox proportional hazards · rehabilitation programme outcomes', accuracy: 76, lastRun: '2h ago', status: 'training' },
+
+const MODEL_KEYS = [
+    { key: '1', accuracy: 91, lastRunKey: '4min', status: 'active' },
+    { key: '2', accuracy: 87, lastRunKey: '18min', status: 'active' },
+    { key: '3', accuracy: 84, lastRunKey: '9min', status: 'active' },
+    { key: '4', accuracy: 79, lastRunKey: '31min', status: 'active' },
+    { key: '5', accuracy: 93, lastRunKey: '12min', status: 'active' },
+    { key: '6', accuracy: 76, lastRunKey: '2h', status: 'training' },
 ];
+
 export default function AIAnalytics() {
     const c = useCacco();
     const { t } = useT();
     const [toast, setToast] = useState(null);
+    const [recModal, setRecModal] = useState(null);
+    const [modelModal, setModelModal] = useState(null);
+
+    const MODELS = useMemo(() => MODEL_KEYS.map(m => ({
+        ...m,
+        title: t(`ai.model${m.key}Title`),
+        desc: t(`ai.model${m.key}Desc`),
+        statusLabel: t(`ai.modelStatus${m.status.charAt(0).toUpperCase() + m.status.slice(1)}`),
+        lastRun: m.lastRunKey.endsWith('h') ? `${m.lastRunKey.replace('h', '')} ${t('ai.hAgo')}` : `${m.lastRunKey.replace('min', '')} ${t('ai.minAgo')}`,
+    })), [t]);
+
     const fire = (rec) => {
         executeRecommendation(rec.id).then((r) => {
             setToast(`${r.message} · ${r.ref}`);
@@ -36,19 +49,14 @@ export default function AIAnalytics() {
     const critRecs = useMemo(() => c.recommendations.filter((r) => r.priority === 'critical' || r.priority === 'high'), [c.recommendations]);
     const threatKpi = c.kpis.find((k) => k.id === 'k-threat');
     const threatIndex = threatKpi?.value ?? 0;
-    /* Risk breakdown for gauge display */
-    const riskCounts = useMemo(() => {
-        return {
-            extreme: { n: c.inmates.filter((m) => m.risk === 'extreme').length, pct: 0 },
-            high: { n: c.inmates.filter((m) => m.risk === 'high').length, pct: 0 },
-            medium: { n: c.inmates.filter((m) => m.risk === 'medium').length, pct: 0 },
-            low: { n: c.inmates.filter((m) => m.risk === 'low').length, pct: 0 },
-        };
-    }, [c.inmates]);
+    const riskCounts = useMemo(() => ({
+        extreme: { n: c.inmates.filter((m) => m.risk === 'extreme').length, pct: 0 },
+        high: { n: c.inmates.filter((m) => m.risk === 'high').length, pct: 0 },
+        medium: { n: c.inmates.filter((m) => m.risk === 'medium').length, pct: 0 },
+        low: { n: c.inmates.filter((m) => m.risk === 'low').length, pct: 0 },
+    }), [c.inmates]);
     Object.values(riskCounts).forEach((v) => { v.pct = Math.round((v.n / c.inmates.length) * 100); });
-    /* Top predicted threats (derived from intel confidence) */
     const topThreats = useMemo(() => [...c.intel].sort((a, b) => b.confidence - a.confidence).slice(0, 5), [c.intel]);
-    /* Crime category risk heat */
     const crimeRisk = useMemo(() => {
         const map = new Map();
         c.inmates.forEach((m) => {
@@ -61,17 +69,64 @@ export default function AIAnalytics() {
     }, [c.inmates]);
     const maxAvg = crimeRisk[0]?.avg ?? 1;
     return (<div className="space-y-4">
+
+      {recModal && (
+        <ActionModal
+          title={t('ai.recExecTitle')}
+          subtitle={recModal.title}
+          fields={[
+            { id: 'team', label: t('ai.recTeamLabel'), type: 'select', required: true, options: c.teams.map(tm => ({ value: tm.callsign, label: tm.callsign })) },
+            { id: 'urgency', label: t('ai.recUrgencyLabel'), type: 'select', required: true, options: [
+              { value: 'immediate', label: t('ai.recUrgencyImmediate') },
+              { value: 'priority', label: t('ai.recUrgencyPriority') },
+              { value: 'scheduled', label: t('ai.recUrgencyScheduled') },
+            ]},
+            { id: 'override', label: t('ai.recAuthLabel'), type: 'select', options: [
+              { value: 'standard', label: t('ai.recAuthStandard') },
+              { value: 'commander', label: t('ai.recAuthCommander') },
+              { value: 'director', label: t('ai.recAuthDirector') },
+            ]},
+            { id: 'notes', label: t('ai.recNotesLabel'), type: 'textarea', placeholder: t('ai.recNotesPh') },
+          ]}
+          confirmLabel={t('ai.recConfirm')}
+          confirmTone="primary"
+          onConfirm={() => { fire(recModal); }}
+          onClose={() => setRecModal(null)}
+        />
+      )}
+
+      {modelModal && (
+        <ActionModal
+          title={`${t('ai.modelConfigTitle')} — ${modelModal.title}`}
+          subtitle={modelModal.desc}
+          fields={[
+            { id: 'action', label: t('ai.modelActionLabel'), type: 'select', required: true, options: [
+              { value: 'retrain', label: t('ai.modelRetrain') },
+              { value: 'calibrate', label: t('ai.modelCalibrate') },
+              { value: 'pause', label: t('ai.modelPause') },
+              { value: 'export', label: t('ai.modelExport') },
+            ]},
+            { id: 'threshold', label: t('ai.modelThresholdLabel'), type: 'number', defaultValue: '80', placeholder: t('ai.modelThresholdPh') },
+            { id: 'notes', label: t('ai.modelJustLabel'), type: 'textarea', placeholder: t('ai.modelJustPh') },
+          ]}
+          confirmLabel={t('ai.modelApply')}
+          confirmTone="primary"
+          onConfirm={(vals) => { setToast(`${modelModal.title} — ${vals.action}`); setTimeout(() => setToast(null), 3000); }}
+          onClose={() => setModelModal(null)}
+        />
+      )}
+
       <PageHeader code="AI-SYS" title={t('ai.title')} subtitle={t('ai.subtitle')} actions={<>
-            <Chip tone="violet"><Icon name="cpu" className="w-3 h-3"/> {MODELS.filter((m) => m.status === 'active').length} MODELS ACTIVE</Chip>
+            <Chip tone="violet"><Icon name="cpu" className="w-3 h-3"/> {MODELS.filter((m) => m.status === 'active').length} {t('ai.modelsActiveChip')}</Chip>
             <Chip tone="danger" dot>{critRecs.length} {t('common.criticalRecs')}</Chip>
           </>}/>
 
       {/* Headline gauges */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard label="AI Threat Index" value={threatIndex} icon={<Icon name="gauge" className="w-4 h-4"/>} tone="#8b5cf6" sub="composite model score 0–100"/>
-        <MetricCard label="Models Running" value={MODELS.filter((m) => m.status === 'active').length} icon={<Icon name="cpu" className="w-4 h-4"/>} tone="#38bdf8" sub="real-time inference"/>
+        <MetricCard label={t('ai.metricAiThreat')} value={threatIndex} icon={<Icon name="gauge" className="w-4 h-4"/>} tone="#8b5cf6" sub={t('ai.subCompositeScore')}/>
+        <MetricCard label={t('ai.metricModelsRunning')} value={MODELS.filter((m) => m.status === 'active').length} icon={<Icon name="cpu" className="w-4 h-4"/>} tone="#38bdf8" sub={t('ai.subRealTimeInference')}/>
         <MetricCard label={t('common.highPriorityRecs')} value={critRecs.length} icon={<Icon name="alert" className="w-4 h-4"/>} tone="#ef4444" sub={t('common.requireImmediateReview')}/>
-        <MetricCard label="Avg Model Accuracy" value={`${Math.round(MODELS.reduce((s, m) => s + m.accuracy, 0) / MODELS.length)}%`} icon={<Icon name="ai" className="w-4 h-4"/>} tone="#10b981" sub="across active models" mono={false}/>
+        <MetricCard label={t('ai.metricAvgAccuracy')} value={`${Math.round(MODELS.reduce((s, m) => s + m.accuracy, 0) / MODELS.length)}%`} icon={<Icon name="ai" className="w-4 h-4"/>} tone="#10b981" sub={t('ai.subAcrossModels')} mono={false}/>
       </div>
 
       {/* Triptych: threat index / model cards / recommendations */}
@@ -80,26 +135,26 @@ export default function AIAnalytics() {
         <div className="space-y-4">
           <Panel title={t('ai.forecastTitle')} icon={<Icon name="gauge" className="w-4 h-4"/>} bodyClass="p-4">
             <div className="flex items-center justify-center">
-              <Ring value={threatIndex} size={130} stroke={11} color="#8b5cf6" sub="AI THREAT INDEX"/>
+              <Ring value={threatIndex} size={130} stroke={11} color="#8b5cf6" sub={t('ai.metricAiThreat').toUpperCase()}/>
             </div>
             <div className="mt-4 space-y-3">
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="t-label">Violence Risk Trend</span>
+                  <span className="t-label">{t('ai.trendViolenceRisk')}</span>
                   <span className="font-mono text-[11px] font-bold text-app-warning">{VIOLENCE_SPARK[VIOLENCE_SPARK.length - 1]}%</span>
                 </div>
                 <Sparkline data={VIOLENCE_SPARK} color="#f59e0b" height={32}/>
               </div>
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="t-label">Model Confidence</span>
+                  <span className="t-label">{t('ai.trendModelConf')}</span>
                   <span className="font-mono text-[11px] font-bold text-app-accent">{MODEL_SPARK[MODEL_SPARK.length - 1]}%</span>
                 </div>
                 <Sparkline data={MODEL_SPARK} color="#38bdf8" height={32}/>
               </div>
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="t-label">Escape Risk Score</span>
+                  <span className="t-label">{t('ai.trendEscapeRisk')}</span>
                   <span className="font-mono text-[11px] font-bold text-app-danger">{ESCAPE_SPARK[ESCAPE_SPARK.length - 1]}</span>
                 </div>
                 <Sparkline data={ESCAPE_SPARK} color="#ef4444" height={32}/>
@@ -112,8 +167,8 @@ export default function AIAnalytics() {
             const m = RISK[r];
             return (<div key={r} className="rounded-md border border-app-border p-2.5" style={{ background: 'var(--app-bg-deep)' }}>
                   <p className="font-mono text-[22px] font-extrabold leading-none text-white">{fmtNum(n)}</p>
-                  <p className="t-label mt-1">{m.label}</p>
-                  <p className="text-[9px] text-app-text-faint">{pct}% of pop.</p>
+                  <p className="t-label mt-1">{t('tone.risk.' + r)}</p>
+                  <p className="text-[9px] text-app-text-faint">{pct}{t('intel.riskPctPop')}</p>
                 </div>);
         })}
           </Panel>
@@ -122,28 +177,28 @@ export default function AIAnalytics() {
         {/* Active models */}
         <Panel title={t('ai.modelsTitle')} icon={<Icon name="cpu" className="w-4 h-4"/>} subtitle={t('ai.modelsSub')} bodyClass="overflow-y-auto p-2.5 space-y-2">
           <div style={{ maxHeight: 560 }} className="space-y-2">
-            {MODELS.map((m) => (<div key={m.title} className="rounded-lg border border-app-border p-2.5" style={{ background: 'var(--app-bg-deep)' }}>
+            {MODELS.map((m) => (<button key={m.key} onClick={() => setModelModal(m)} className="w-full rounded-lg border border-app-border p-2.5 text-left transition-all hover:border-app-border-strong" style={{ background: 'var(--app-bg-deep)' }}>
                 <div className="flex items-center gap-2">
                   <Dot color={m.status === 'active' ? '#10b981' : m.status === 'training' ? '#38bdf8' : '#f59e0b'} pulse={m.status === 'active'} size={7}/>
                   <span className="text-[11px] font-bold text-app-text truncate flex-1">{m.title}</span>
-                  <span className="font-mono text-[9px] font-bold uppercase" style={{ color: m.status === 'active' ? '#10b981' : '#38bdf8' }}>{m.status}</span>
+                  <span className="font-mono text-[9px] font-bold uppercase" style={{ color: m.status === 'active' ? '#10b981' : '#38bdf8' }}>{m.statusLabel}</span>
                 </div>
                 <p className="mt-1.5 text-[9.5px] leading-relaxed text-app-text-faint">{m.desc}</p>
                 <div className="mt-2 flex items-center justify-between">
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="t-label shrink-0">Accuracy</span>
+                    <span className="t-label shrink-0">{t('ai.labelAccuracy')}</span>
                     <Confidence value={m.accuracy} color="#8b5cf6"/>
                   </div>
                   <span className="ml-3 font-mono text-[9px] text-app-text-faint shrink-0">{m.lastRun}</span>
                 </div>
-              </div>))}
+              </button>))}
           </div>
         </Panel>
 
         {/* High-priority recommendations */}
         <Panel title={t('ai.recsTitle')} icon={<Icon name="ai" className="w-4 h-4"/>} subtitle={t('ai.recsSub')} actions={<Chip tone="violet"><Icon name="cpu" className="w-3 h-3"/> {c.recommendations.length}</Chip>} bodyClass="overflow-y-auto p-2.5 space-y-2">
           <div style={{ maxHeight: 560 }} className="space-y-2">
-            {c.recommendations.map((r) => <RecommendationCard key={r.id} rec={r} onAction={fire}/>)}
+            {c.recommendations.map((r) => <RecommendationCard key={r.id} rec={r} onAction={(rec) => setRecModal(rec)}/>)}
           </div>
         </Panel>
       </div>
@@ -155,7 +210,7 @@ export default function AIAnalytics() {
               <div className="mb-1 flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate text-[11px] text-app-text-muted">{crime}</span>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="t-label">{n} subjects</span>
+                  <span className="t-label">{n} {t('ai.labelSubjects')}</span>
                   <span className="font-mono text-[12px] font-bold" style={{ color: avg >= 70 ? '#ef4444' : avg >= 50 ? '#f59e0b' : '#38bdf8' }}>{avg}</span>
                 </div>
               </div>
@@ -165,21 +220,21 @@ export default function AIAnalytics() {
 
         <Panel title={t('ai.topSignals')} icon={<Icon name="crosshair" className="w-4 h-4"/>} subtitle={t('ai.topSignalsSub')} bodyClass="p-3 space-y-2.5">
           {topThreats.map((intel) => {
-            const t = THREAT[intel.severity];
+            const thr = THREAT[intel.severity];
             return (<div key={intel.id} className="rounded-lg border border-app-border p-2.5" style={{ background: 'var(--app-bg-deep)' }}>
                 <div className="flex items-start gap-2">
-                  <Dot color={t.hex} size={6}/>
+                  <Dot color={thr.hex} size={6}/>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold text-app-text">{intel.title}</p>
                     <p className="mt-0.5 text-[9.5px] text-app-text-faint">{intel.category} · {intel.affectedZone}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="font-mono text-[10px] font-bold" style={{ color: t.hex }}>{t.label}</p>
-                    <p className="text-[9px] text-app-text-faint">{intel.confidence}% conf.</p>
+                    <p className="font-mono text-[10px] font-bold" style={{ color: thr.hex }}>{t('tone.threat.' + intel.severity)}</p>
+                    <p className="text-[9px] text-app-text-faint">{intel.confidence}% {t('ai.labelConf')}</p>
                   </div>
                 </div>
                 <div className="mt-2">
-                  <Confidence value={intel.confidence} color={t.hex}/>
+                  <Confidence value={intel.confidence} color={thr.hex}/>
                 </div>
               </div>);
         })}

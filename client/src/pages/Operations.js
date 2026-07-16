@@ -100,10 +100,10 @@ function RecordsTab() {
     };
     return (<div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard label="Total Records" value={counts.total} icon={<IcoCoverage />} color="text-blue-400" onClick={() => setSelectedKPI('total')}/>
-        <KPICard label="Completed" value={counts.completed} icon={<IcoCheck />} color="text-emerald-400" trend={5.2} onClick={() => setSelectedKPI('completed')}/>
-        <KPICard label="In Progress/Pending" value={counts.pending} icon={<IcoCalendar />} color="text-amber-400" onClick={() => setSelectedKPI('pending')}/>
-        <KPICard label="Critical" value={counts.critical} icon={<IcoAlert />} rag="critical" onClick={() => setSelectedKPI('critical')}/>
+        <KPICard label="Total de Registros" value={counts.total} icon={<IcoCoverage />} color="text-blue-400" onClick={() => setSelectedKPI('total')}/>
+        <KPICard label="Completados" value={counts.completed} icon={<IcoCheck />} color="text-emerald-400" trend={5.2} onClick={() => setSelectedKPI('completed')}/>
+        <KPICard label="En Progreso/Pendiente" value={counts.pending} icon={<IcoCalendar />} color="text-amber-400" onClick={() => setSelectedKPI('pending')}/>
+        <KPICard label="Crítico" value={counts.critical} icon={<IcoAlert />} rag="critical" onClick={() => setSelectedKPI('critical')}/>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-app-panel border border-app-border rounded-lg p-3 relative">
@@ -189,10 +189,10 @@ function AssetsTab() {
     };
     return (<div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard label="Total Assets" value={counts.total} icon={<IcoTruck />} color="text-blue-400"/>
-        <KPICard label="Active" value={counts.active} icon={<IcoCheck />} color="text-emerald-400" trend={2.1}/>
-        <KPICard label="In Maintenance" value={counts.maintenance} icon={<IcoWrench />} color="text-amber-400"/>
-        <KPICard label="Offline" value={counts.offline} icon={<IcoAlert />} rag={counts.offline > 0 ? 'critical' : 'normal'}/>
+        <KPICard label="Total de Activos" value={counts.total} icon={<IcoTruck />} color="text-blue-400"/>
+        <KPICard label="Activo" value={counts.active} icon={<IcoCheck />} color="text-emerald-400" trend={2.1}/>
+        <KPICard label="En Mantenimiento" value={counts.maintenance} icon={<IcoWrench />} color="text-amber-400"/>
+        <KPICard label="Fuera de Línea" value={counts.offline} icon={<IcoAlert />} rag={counts.offline > 0 ? 'critical' : 'normal'}/>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-app-panel border border-app-border rounded-lg p-3 relative">
@@ -290,10 +290,10 @@ function InventoryTab() {
     });
     return (<div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard label="Avg Capacity Used" value={avgPct} unit="%" icon={<IcoBox />} color="text-blue-400" trend={1.2}/>
-        <KPICard label="Total Daily Intake" value={totalIn} unit=" units" icon={<IcoTrendUp />} color="text-emerald-400"/>
-        <KPICard label="Total Locations" value={INVENTORY.length} icon={<IcoDollar />} color="text-slate-400"/>
-        <KPICard label="Critical" value={critCount} icon={<IcoAlert />} rag={critCount > 0 ? 'critical' : 'normal'}/>
+        <KPICard label="Capacidad Promedio Usada" value={avgPct} unit="%" icon={<IcoBox />} color="text-blue-400" trend={1.2}/>
+        <KPICard label="Ingreso Diario Total" value={totalIn} unit=" units" icon={<IcoTrendUp />} color="text-emerald-400"/>
+        <KPICard label="Total de Ubicaciones" value={INVENTORY.length} icon={<IcoDollar />} color="text-slate-400"/>
+        <KPICard label="Crítico" value={critCount} icon={<IcoAlert />} rag={critCount > 0 ? 'critical' : 'normal'}/>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">

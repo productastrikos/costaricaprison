@@ -7,9 +7,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCacco } from '../services/CaccoData';
 import {
   Panel, MetricCard, Chip, PageHeader, KV, Dot, Meter,
-  SectionLabel, Segmented, Ring,
+  SectionLabel, Segmented, Ring, ActionModal,
 } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { useT } from '../contexts/LanguageContext';
 
 /* ─── Seeded PRNG for deterministic initial data ─────────────────── */
 function mkrng(seed) {
@@ -28,26 +29,26 @@ const sp  = (arr)    => arr[Math.floor(SR() * arr.length)];
 /* ═══════════════════ STATIC CATALOGUE DATA ══════════════════════════ */
 
 const DET_TYPES = [
-  { code:'FIGHT', label:'Fight Detection',             sev:'critical', base:88, col:'#ef4444' },
-  { code:'WEAP',  label:'Weapon Detection',            sev:'critical', base:95, col:'#ef4444' },
-  { code:'GANG',  label:'Gang Assembly',               sev:'critical', base:90, col:'#ef4444' },
-  { code:'FENC',  label:'Fence Climbing',              sev:'critical', base:92, col:'#ef4444' },
-  { code:'GURD',  label:'Guard Distress Event',        sev:'critical', base:96, col:'#ef4444' },
-  { code:'UENT',  label:'Unauthorized Entry',          sev:'critical', base:83, col:'#ef4444' },
-  { code:'FIRE',  label:'Fire Detection',              sev:'critical', base:98, col:'#ef4444' },
-  { code:'AGGR',  label:'Aggressive Behavior',         sev:'high',     base:71, col:'#f59e0b' },
-  { code:'GATH',  label:'Unauthorized Gathering',      sev:'high',     base:67, col:'#f59e0b' },
-  { code:'DOOR',  label:'Cell Door Tampering',         sev:'high',     base:73, col:'#f59e0b' },
-  { code:'MED',   label:'Medical Emergency',           sev:'high',     base:77, col:'#f59e0b' },
-  { code:'CTRB',  label:'Contraband Exchange',         sev:'high',     base:76, col:'#f59e0b' },
-  { code:'CRWD',  label:'Abnormal Crowd Formation',    sev:'high',     base:68, col:'#f59e0b' },
-  { code:'RACC',  label:'Restricted Area Access',      sev:'high',     base:72, col:'#f59e0b' },
-  { code:'RUN',   label:'Running — Restricted Zone',   sev:'high',     base:64, col:'#f59e0b' },
-  { code:'SMOK',  label:'Smoke Detection',             sev:'high',     base:70, col:'#f59e0b' },
-  { code:'SOBJ',  label:'Suspicious Object',           sev:'moderate', base:54, col:'#38bdf8' },
-  { code:'VISV',  label:'Visitor Screening Violation', sev:'moderate', base:52, col:'#38bdf8' },
-  { code:'FALL',  label:'Fall Detection',              sev:'moderate', base:57, col:'#38bdf8' },
-  { code:'NACT',  label:'Unusual Night Activity',      sev:'moderate', base:61, col:'#38bdf8' },
+  { code:'FIGHT', tKey:'detFight', label:'Fight Detection',             sev:'critical', base:88, col:'#ef4444' },
+  { code:'WEAP',  tKey:'detWeap',  label:'Weapon Detection',            sev:'critical', base:95, col:'#ef4444' },
+  { code:'GANG',  tKey:'detGang',  label:'Gang Assembly',               sev:'critical', base:90, col:'#ef4444' },
+  { code:'FENC',  tKey:'detFenc',  label:'Fence Climbing',              sev:'critical', base:92, col:'#ef4444' },
+  { code:'GURD',  tKey:'detGurd',  label:'Guard Distress Event',        sev:'critical', base:96, col:'#ef4444' },
+  { code:'UENT',  tKey:'detUent',  label:'Unauthorized Entry',          sev:'critical', base:83, col:'#ef4444' },
+  { code:'FIRE',  tKey:'detFire',  label:'Fire Detection',              sev:'critical', base:98, col:'#ef4444' },
+  { code:'AGGR',  tKey:'detAggr',  label:'Aggressive Behavior',         sev:'high',     base:71, col:'#f59e0b' },
+  { code:'GATH',  tKey:'detGath',  label:'Unauthorized Gathering',      sev:'high',     base:67, col:'#f59e0b' },
+  { code:'DOOR',  tKey:'detDoor',  label:'Cell Door Tampering',         sev:'high',     base:73, col:'#f59e0b' },
+  { code:'MED',   tKey:'detMed',   label:'Medical Emergency',           sev:'high',     base:77, col:'#f59e0b' },
+  { code:'CTRB',  tKey:'detCtrb',  label:'Contraband Exchange',         sev:'high',     base:76, col:'#f59e0b' },
+  { code:'CRWD',  tKey:'detCrwd',  label:'Abnormal Crowd Formation',    sev:'high',     base:68, col:'#f59e0b' },
+  { code:'RACC',  tKey:'detRacc',  label:'Restricted Area Access',      sev:'high',     base:72, col:'#f59e0b' },
+  { code:'RUN',   tKey:'detRun',   label:'Running — Restricted Zone',   sev:'high',     base:64, col:'#f59e0b' },
+  { code:'SMOK',  tKey:'detSmok',  label:'Smoke Detection',             sev:'high',     base:70, col:'#f59e0b' },
+  { code:'SOBJ',  tKey:'detSobj',  label:'Suspicious Object',           sev:'moderate', base:54, col:'#38bdf8' },
+  { code:'VISV',  tKey:'detVisv',  label:'Visitor Screening Violation', sev:'moderate', base:52, col:'#38bdf8' },
+  { code:'FALL',  tKey:'detFall',  label:'Fall Detection',              sev:'moderate', base:57, col:'#38bdf8' },
+  { code:'NACT',  tKey:'detNact',  label:'Unusual Night Activity',      sev:'moderate', base:61, col:'#38bdf8' },
 ];
 
 const DET_ACTIONS = {
@@ -108,28 +109,28 @@ const ZONE_GRAD = {
 /* ─── Perimeter zone definitions ─────────────────────────────────── */
 const PERIM_ZONES = [
   {
-    id:'north', label:'North Perimeter', abbr:'N',
+    id:'north', label:'North Perimeter', labelKey:'perimLabelN', abbr:'N',
     fence:[12,11], thermal:[4,4], motion:[6,5], towers:[2,2], drones:[1,1],
     status:'alert', risk:'high', aiScore:74, intrusions:3,
     lastEvent:'5× fence triggers — Sector 7 — last 6h',
     aiNote:'Repeated sub-threshold vibrations on Sector 7 consistent with probing activity. Pattern aligns with pre-breach reconnaissance observed at peer facilities.',
   },
   {
-    id:'east', label:'East Perimeter', abbr:'E',
+    id:'east', label:'East Perimeter', labelKey:'perimLabelE', abbr:'E',
     fence:[14,13], thermal:[5,5], motion:[4,4], towers:[1,1], drones:[1,0],
     status:'normal', risk:'moderate', aiScore:28, intrusions:0,
     lastEvent:'Animal heat signature — 02:14',
     aiNote:'Low-level anomaly detected. Animal origin confirmed by thermal classification. No human signatures present. UAV offline for scheduled maintenance.',
   },
   {
-    id:'south', label:'South Perimeter', abbr:'S',
+    id:'south', label:'South Perimeter', labelKey:'perimLabelS', abbr:'S',
     fence:[10,10], thermal:[3,2], motion:[5,5], towers:[2,2], drones:[0,0],
     status:'normal', risk:'low', aiScore:12, intrusions:0,
     lastEvent:'Routine patrol — all clear',
     aiNote:'Perimeter secure. One thermal camera offline for scheduled maintenance. Guard patrol coverage confirmed and nominal. No threats identified.',
   },
   {
-    id:'west', label:'West Perimeter', abbr:'W',
+    id:'west', label:'West Perimeter', labelKey:'perimLabelW', abbr:'W',
     fence:[11,11], thermal:[4,4], motion:[4,3], towers:[2,1], drones:[1,1],
     status:'caution', risk:'moderate', aiScore:46, intrusions:1,
     lastEvent:'Unknown heat signature — 23:41',
@@ -194,26 +195,21 @@ const CORRELATIONS = [
   },
 ];
 
-/* ─── Threat level scale ─────────────────────────────────────────── */
-const THREAT_LEVELS = [
-  { idx:0, code:'GREEN',  label:'NORMAL',             color:'#10b981', description:'Facility operating within normal parameters. No immediate threats identified.' },
-  { idx:1, code:'YELLOW', label:'HEIGHTENED',          color:'#eab308', description:'Elevated threat indicators present. Increased monitoring and patrol density required.' },
-  { idx:2, code:'ORANGE', label:'HIGH ALERT',          color:'#f97316', description:'Active security threats confirmed. Response teams deployed. Command staff notified.' },
-  { idx:3, code:'RED',    label:'CRITICAL INCIDENT',   color:'#ef4444', description:'Major security incident in progress. All response units engaged. External agencies on standby.' },
-  { idx:4, code:'BLACK',  label:'FACILITY EMERGENCY',  color:'#c084fc', description:'Facility-wide emergency declared. Maximum response posture. External agencies activated.' },
+/* ─── Threat level scale (labels/descriptions resolved via t() at render) */
+const THREAT_LEVELS_RAW = [
+  { idx:0, code:'GREEN',  labelKey:'threatLabelGreen',  descKey:'threatDescGreen',  color:'#10b981' },
+  { idx:1, code:'YELLOW', labelKey:'threatLabelYellow', descKey:'threatDescYellow', color:'#eab308' },
+  { idx:2, code:'ORANGE', labelKey:'threatLabelOrange', descKey:'threatDescOrange', color:'#f97316' },
+  { idx:3, code:'RED',    labelKey:'threatLabelRed',    descKey:'threatDescRed',    color:'#ef4444' },
+  { idx:4, code:'BLACK',  labelKey:'threatLabelBlack',  descKey:'threatDescBlack',  color:'#c084fc' },
 ];
 
-/* ─── AI architecture stack ──────────────────────────────────────── */
-const AI_STACK = [
-  { name:'YOLOv12',    status:'active',  role:'Object & Pose Detection',      ver:'12.1.4' },
-  { name:'DeepSORT',   status:'active',  role:'Multi-Object Tracking',        ver:'2.3.1'  },
-  { name:'OpenCV',     status:'active',  role:'Video Pre-processing',         ver:'4.9.0'  },
-  { name:'DeepStream', status:'active',  role:'GPU Stream Pipeline',          ver:'6.4'    },
-  { name:'TensorRT',   status:'active',  role:'Inference Acceleration',       ver:'8.6.1'  },
-  { name:'ONVIF',      status:'active',  role:'Camera Protocol Integration',  ver:'21.12'  },
-  { name:'FaceRec',    status:'standby', role:'Facial Recognition Module',    ver:'3.2.0'  },
-  { name:'LPR',        status:'standby', role:'License Plate Recognition',    ver:'2.1.0'  },
-];
+/* ─── PERIM_ZONES with labelKey ─────────────────────────────────────── */
+const THERMAL_TYPE_KEY = {
+  'Human Detection':'humanDetection', 'Vehicle Detection':'vehicleDetection',
+  'Animal Detection':'animalDetection', 'Unknown Heat Signature':'unknownHeat',
+};
+
 
 /* ─── Zone risk predictions ──────────────────────────────────────── */
 const ZONE_PREDS = [
@@ -228,7 +224,8 @@ const ZONE_PREDS = [
 /* ════════════════════ HELPERS ════════════════════════════════════════ */
 
 const threatColor = (s) => s >= 76 ? '#ef4444' : s >= 51 ? '#f59e0b' : s >= 21 ? '#38bdf8' : '#10b981';
-const threatLabel = (s) => s >= 76 ? 'CRITICAL' : s >= 51 ? 'HIGH' : s >= 21 ? 'MODERATE' : 'LOW';
+const threatLevelKey = (s) => s >= 76 ? 'critical' : s >= 51 ? 'high' : s >= 21 ? 'moderate' : 'low';
+const threatLabel = (s) => s >= 76 ? 'CRÍTICO' : s >= 51 ? 'ALTO' : s >= 21 ? 'MODERADO' : 'BAJO';
 const sevColor    = (v) => ({ critical:'#ef4444', high:'#f59e0b', moderate:'#38bdf8', low:'#10b981' }[v] ?? '#666');
 const perimColor  = (v) => ({ alert:'#ef4444', caution:'#f97316', normal:'#10b981' }[v] ?? '#666');
 const fmtTs       = (ms) => { const d = new Date(ms); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; };
@@ -243,6 +240,7 @@ function makeDetection(cameras, now) {
     id: `DET-${_serial++}`,
     ts: now,
     label: type.label,
+    tKey: type.tKey,
     sev: type.sev,
     col: type.col,
     cameraId: cam.id,
@@ -263,6 +261,7 @@ function seedDetections(cameras, now) {
       id: `DET-${6900 + i}`,
       ts: now - si(30, 900) * 1000,
       label: type.label,
+      tKey: type.tKey,
       sev: type.sev,
       col: type.col,
       cameraId: cameras[camIdx]?.id ?? 'CAM-A-01',
@@ -278,7 +277,8 @@ function seedDetections(cameras, now) {
 
 /* ════════════════════ SUB-COMPONENTS ════════════════════════════════ */
 
-function ThreatBar({ score, height = 5, showLabel = false }) {
+function ThreatBar({ score, height = 5, showLabel = false, tLabel }) {
+  const { t } = useT();
   const col = threatColor(score);
   return (
     <div className="flex items-center gap-2">
@@ -287,7 +287,7 @@ function ThreatBar({ score, height = 5, showLabel = false }) {
       </div>
       {showLabel && (
         <span className="font-mono text-[9px] font-bold shrink-0" style={{ color:col, minWidth:66 }}>
-          {threatLabel(score)} {score}
+          {tLabel ?? t('tone.threat.' + threatLevelKey(score))} {score}
         </span>
       )}
     </div>
@@ -295,6 +295,7 @@ function ThreatBar({ score, height = 5, showLabel = false }) {
 }
 
 function CamCell({ cam, idx, selected, onSelect }) {
+  const { t } = useT();
   const grad = ZONE_GRAD[cam.zoneId] ?? ZONE_GRAD['BLK-A'];
   return (
     <button
@@ -330,7 +331,7 @@ function CamCell({ cam, idx, selected, onSelect }) {
         </div>
         {/* FPS */}
         <span className="absolute bottom-1 right-1.5 font-mono text-[7px]" style={{ color: cam.online ? '#10b98166' : '#ef444466' }}>
-          {cam.online ? `${cam.fps}fps` : 'OFFLINE'}
+          {cam.online ? `${cam.fps}fps` : t('surv.offline')}
         </span>
         {/* REC badge */}
         {cam.online && <span className="absolute left-1.5 bottom-5 font-mono text-[6.5px] font-bold" style={{ color:'#ef444477' }}>● REC</span>}
@@ -338,7 +339,7 @@ function CamCell({ cam, idx, selected, onSelect }) {
         {!cam.online && (
           <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background:'rgba(0,0,0,0.62)' }}>
             <Icon name="surveillance" className="h-5 w-5 opacity-20"/>
-            <p className="mt-1 font-mono text-[8px] font-bold" style={{ color:'#ef4444', opacity:0.65 }}>SIGNAL LOST</p>
+            <p className="mt-1 font-mono text-[8px] font-bold" style={{ color:'#ef4444', opacity:0.65 }}>{t('surv.signalLost')}</p>
           </div>
         )}
       </div>
@@ -346,13 +347,14 @@ function CamCell({ cam, idx, selected, onSelect }) {
   );
 }
 
-function CameraDetail({ cam, idx, zones }) {
+function CameraDetail({ cam, idx, zones, onAction }) {
+  const { t } = useT();
   if (!cam) return null;
   const zone       = zones.find(z => z.id === cam.zoneId);
   const location   = CAM_LOCS[idx % CAM_LOCS.length];
   const storage    = 48 + (idx * 11) % 42;
   const netHealth  = cam.online ? 78 + (idx * 5) % 21 : 0;
-  const detLabels  = ['Unauthorized movement detected','Unidentified gathering forming','Restricted zone breach','Contraband indicator present','Cell door manipulation'];
+  const detLabels  = [t('surv.detLab0'),t('surv.detLab1'),t('surv.detLab2'),t('surv.detLab3'),t('surv.detLab4')];
   const detScores  = [88, 74, 91, 67, 82];
   return (
     <div className="space-y-3">
@@ -366,12 +368,12 @@ function CameraDetail({ cam, idx, zones }) {
               <div className="h-8 w-8 rounded-full border border-app-accent/40 flex items-center justify-center mb-1.5" style={{ background:'var(--app-accent-bg)' }}>
                 <Icon name="surveillance" className="h-4 w-4 text-app-accent"/>
               </div>
-              <p className="font-mono text-[8px] tracking-widest text-white/35">LIVE FEED</p>
+              <p className="font-mono text-[8px] tracking-widest text-white/35">{t('surv.liveFeed')}</p>
             </>
           ) : (
             <>
               <Icon name="surveillance" className="h-7 w-7 opacity-20"/>
-              <p className="mt-1.5 font-mono text-[8px] font-bold" style={{ color:'#ef4444', opacity:0.65 }}>SIGNAL LOST</p>
+              <p className="mt-1.5 font-mono text-[8px] font-bold" style={{ color:'#ef4444', opacity:0.65 }}>{t('surv.signalLost')}</p>
             </>
           )}
         </div>
@@ -383,27 +385,27 @@ function CameraDetail({ cam, idx, zones }) {
 
       {/* Core metadata */}
       <div className="space-y-0">
-        <KV k="Camera ID"   v={cam.id}/>
-        <KV k="Status"      v={cam.online ? 'ONLINE' : 'OFFLINE'}   color={cam.online ? '#10b981' : '#ef4444'}/>
-        <KV k="Zone"        v={zone?.name ?? cam.zoneId}/>
-        <KV k="Frame Rate"  v={`${cam.fps} fps`}                     color={cam.fps >= 25 ? '#10b981' : '#f59e0b'}/>
-        <KV k="Resolution"  v="1920 × 1080"/>
-        <KV k="AI Flags"    v={cam.aiFlags}                          color={cam.aiFlags > 0 ? '#f59e0b' : '#10b981'}/>
-        <KV k="Encryption"  v="AES-256"                              color="#10b981"/>
-        <KV k="Retention"   v="30 days"/>
-        <KV k="Protocol"    v="ONVIF 21.12"/>
+        <KV k={t('surv.cameraId')}  v={cam.id}/>
+        <KV k={t('surv.camStatus')} v={cam.online ? t('surv.online') : t('surv.offline')} color={cam.online ? '#10b981' : '#ef4444'}/>
+        <KV k={t('common.zone')}    v={zone?.name ?? cam.zoneId}/>
+        <KV k={t('surv.frameRate')} v={`${cam.fps} fps`} color={cam.fps >= 25 ? '#10b981' : '#f59e0b'}/>
+        <KV k={t('surv.resolution')} v="1920 × 1080"/>
+        <KV k={t('surv.aiFlags')}   v={cam.aiFlags} color={cam.aiFlags > 0 ? '#f59e0b' : '#10b981'}/>
+        <KV k={t('surv.encryption')} v="AES-256" color="#10b981"/>
+        <KV k={t('surv.retention')}  v="30 days"/>
+        <KV k={t('surv.protocol')}   v="ONVIF 21.12"/>
       </div>
 
       {/* Network health */}
       <div>
-        <SectionLabel className="mb-1.5">Network Health</SectionLabel>
+        <SectionLabel className="mb-1.5">{t('surv.networkHealth')}</SectionLabel>
         <Meter value={netHealth} max={100} color={netHealth > 70 ? '#10b981' : '#f59e0b'} height={5}/>
         <p className="mt-1 font-mono text-[9px] text-app-text-faint">{netHealth}% link quality · {cam.online ? 'Latency: 12ms' : 'No signal'}</p>
       </div>
 
       {/* Storage */}
       <div>
-        <SectionLabel className="mb-1.5">Storage Utilization</SectionLabel>
+        <SectionLabel className="mb-1.5">{t('surv.storageUtil')}</SectionLabel>
         <Meter value={storage} max={100} color={storage > 80 ? '#ef4444' : storage > 65 ? '#f59e0b' : '#10b981'} height={5}/>
         <p className="mt-1 font-mono text-[9px] text-app-text-faint">{storage}% used · {(( 100 - storage) * 0.48).toFixed(1)} TB free</p>
       </div>
@@ -414,10 +416,10 @@ function CameraDetail({ cam, idx, zones }) {
         <Dot color={cam.online ? '#10b981' : '#ef4444'} pulse={cam.online} size={6}/>
         <div>
           <p className="text-[10px] font-bold" style={{ color: cam.online ? '#10b981' : '#ef4444' }}>
-            {cam.online ? 'RECORDING ACTIVE' : 'RECORDING SUSPENDED'}
+            {cam.online ? t('surv.recordingActive') : t('surv.recordingSuspended')}
           </p>
           <p className="font-mono text-[9px] text-app-text-faint">
-            {cam.online ? 'Continuous recording · Cloud backup enabled' : 'Last known state preserved'}
+            {cam.online ? t('surv.continuousRec') : t('surv.lastKnownState')}
           </p>
         </div>
       </div>
@@ -425,7 +427,7 @@ function CameraDetail({ cam, idx, zones }) {
       {/* AI detections */}
       {cam.aiFlags > 0 && (
         <div>
-          <SectionLabel className="mb-1.5">Active AI Detections</SectionLabel>
+          <SectionLabel className="mb-1.5">{t('surv.activeAiDetections')}</SectionLabel>
           <div className="space-y-1.5">
             {Array.from({ length: cam.aiFlags }).map((_, i) => {
               const score = detScores[i % detScores.length];
@@ -444,15 +446,25 @@ function CameraDetail({ cam, idx, zones }) {
         </div>
       )}
 
+      {/* Camera action button */}
+      {onAction && (
+        <button
+          onClick={() => onAction(cam)}
+          className="btn btn-primary w-full justify-center"
+        >
+          {t('surv.camActionTitle')}
+        </button>
+      )}
+
       {/* Environmental conditions */}
       <div>
-        <SectionLabel className="mb-1.5">Environmental Conditions</SectionLabel>
+        <SectionLabel className="mb-1.5">{t('surv.envConditions')}</SectionLabel>
         <div className="grid grid-cols-2 gap-1.5">
           {[
-            { label:'Visibility', v:'Good', ok:true },
-            { label:'Lighting',   v: cam.online ? 'Adequate' : 'Unknown', ok: cam.online },
-            { label:'Temp (env)', v:'27°C',  ok:true },
-            { label:'Humidity',   v:'78%',   ok:true },
+            { label:t('surv.visibility'), v:t('surv.good'), ok:true },
+            { label:t('surv.lighting'),   v: cam.online ? t('surv.adequate') : t('surv.unknown'), ok: cam.online },
+            { label:t('surv.temperature'), v:'27°C', ok:true },
+            { label:t('surv.humidity'),    v:'78%',  ok:true },
           ].map(({ label, v, ok }) => (
             <div key={label} className="rounded px-2 py-1.5 border border-app-border" style={{ background:'rgba(0,0,0,0.25)' }}>
               <p className="t-label">{label}</p>
@@ -465,7 +477,8 @@ function CameraDetail({ cam, idx, zones }) {
   );
 }
 
-function DetRow({ det }) {
+function DetRow({ det, onEscalate }) {
+  const { t } = useT();
   const col = det.col ?? threatColor(det.threatScore);
   return (
     <div className="relative rounded-md border px-3 py-2.5 transition-all"
@@ -483,7 +496,7 @@ function DetRow({ det }) {
             </span>
           </div>
           {/* Label */}
-          <p className="text-[11px] font-extrabold mb-1 leading-snug" style={{ color:col }}>{det.label}</p>
+          <p className="text-[11px] font-extrabold mb-1 leading-snug" style={{ color:col }}>{det.tKey ? t('surv.' + det.tKey) : det.label}</p>
           {/* Location */}
           <p className="text-[9.5px] text-app-text-muted mb-1.5 truncate">{det.location}</p>
           {/* Threat bar */}
@@ -496,6 +509,15 @@ function DetRow({ det }) {
           </div>
           {/* Recommended action */}
           <p className="mt-1.5 text-[9px] text-app-text-muted leading-relaxed">{det.action}</p>
+          {det.sev !== 'low' && onEscalate && (
+            <button
+              onClick={() => onEscalate(det)}
+              className="mt-2 rounded px-2.5 py-1 text-[10px] font-bold transition-colors"
+              style={{ background:`${col}1a`, color:col, border:`1px solid ${col}3a` }}
+            >
+              {t('surv.escaleTitle')} →
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -503,6 +525,7 @@ function DetRow({ det }) {
 }
 
 function PerimZoneCard({ zone }) {
+  const { t } = useT();
   const sc  = zone.aiScore;
   const col = perimColor(zone.status);
   const arc = threatColor(sc);
@@ -517,10 +540,10 @@ function PerimZoneCard({ zone }) {
               style={{ background:`${col}1a`, color:col, border:`1px solid ${col}44` }}>
               {zone.abbr}
             </div>
-            <p className="text-[12px] font-bold text-app-text">{zone.label}</p>
+            <p className="text-[12px] font-bold text-app-text">{zone.labelKey ? t('surv.' + zone.labelKey) : zone.label}</p>
           </div>
           <p className="font-mono text-[8.5px] font-bold" style={{ color:col }}>
-            {zone.status.toUpperCase()} · {zone.risk.toUpperCase()} RISK · {zone.intrusions} INTRUSION{zone.intrusions !== 1 ? 'S' : ''} (24h)
+            {t('surv.perimStatus' + zone.status.charAt(0).toUpperCase() + zone.status.slice(1))} · {t('tone.threat.' + zone.risk)} {t('surv.perimRiskLabel')} · {zone.intrusions} {zone.intrusions !== 1 ? t('surv.perimIntrusionPlural') : t('surv.perimIntrusionSingular')} (24h)
           </p>
         </div>
         <Ring value={sc} max={100} size={56} stroke={5} color={arc} label={sc} sub="AI"/>
@@ -529,10 +552,10 @@ function PerimZoneCard({ zone }) {
       {/* Sensor matrix */}
       <div className="grid grid-cols-2 gap-1.5">
         {[
-          { label:'Fence Sensors',   vals:zone.fence   },
-          { label:'Thermal Cameras', vals:zone.thermal  },
-          { label:'Motion Sensors',  vals:zone.motion   },
-          { label:'Guard Towers',    vals:zone.towers   },
+          { label:t('surv.fenceSensors'),   vals:zone.fence   },
+          { label:t('surv.thermalCameras'), vals:zone.thermal  },
+          { label:t('surv.motionSensors'),  vals:zone.motion   },
+          { label:t('surv.guardTowers'),    vals:zone.towers   },
         ].map(({ label, vals }) => {
           const ok = vals[1] === vals[0];
           return (
@@ -552,22 +575,22 @@ function PerimZoneCard({ zone }) {
       {zone.drones[0] > 0 && (
         <div className="flex items-center justify-between rounded px-2 py-1.5"
           style={{ background:'rgba(56,189,248,0.06)', border:'1px solid rgba(56,189,248,0.18)' }}>
-          <span className="text-[10px] font-semibold" style={{ color:'#38bdf8' }}>UAV Surveillance</span>
+          <span className="text-[10px] font-semibold" style={{ color:'#38bdf8' }}>{t('surv.uavSurveillance')}</span>
           <span className="font-mono text-[10px] font-bold" style={{ color: zone.drones[1] > 0 ? '#38bdf8' : '#f59e0b' }}>
-            {zone.drones[1]}/{zone.drones[0]} active
+            {zone.drones[1]}/{zone.drones[0]} {t('surv.uavActive')}
           </span>
         </div>
       )}
 
       {/* Last event */}
       <div className="rounded px-2 py-1.5 border border-app-border" style={{ background:'rgba(0,0,0,0.22)' }}>
-        <p className="t-label mb-0.5">Last Recorded Event</p>
+        <p className="t-label mb-0.5">{t('surv.lastRecordedEvent')}</p>
         <p className="text-[10px] font-semibold text-app-text">{zone.lastEvent}</p>
       </div>
 
       {/* AI note */}
       <div style={{ borderTop:'1px solid var(--app-border)', paddingTop:8 }}>
-        <SectionLabel className="mb-1">AI Threat Assessment</SectionLabel>
+        <SectionLabel className="mb-1">{t('surv.aiThreatAssessment')}</SectionLabel>
         <p className="text-[9px] text-app-text-muted leading-relaxed">{zone.aiNote}</p>
       </div>
     </div>
@@ -575,6 +598,7 @@ function PerimZoneCard({ zone }) {
 }
 
 function ThermalRow({ th }) {
+  const { t } = useT();
   const col  = sevColor(th.cls);
   const icon = { 'Human Detection':'👤', 'Vehicle Detection':'🚗', 'Animal Detection':'🐾', 'Unknown Heat Signature':'⚠' }[th.type] ?? '?';
   return (
@@ -585,15 +609,15 @@ function ThermalRow({ th }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <p className="text-[10.5px] font-bold text-app-text truncate">{th.type}</p>
-          <span className="font-mono text-[8px] font-bold shrink-0" style={{ color:col }}>{th.cls.toUpperCase()}</span>
+          <p className="text-[10.5px] font-bold text-app-text truncate">{t('surv.' + (THERMAL_TYPE_KEY[th.type] ?? 'unknownHeat'))}</p>
+          <span className="font-mono text-[8px] font-bold shrink-0" style={{ color:col }}>{t('tone.threat.' + th.cls)}</span>
         </div>
         <p className="font-mono text-[8.5px] text-app-text-faint mb-0.5">{th.ts} · {th.zone}</p>
         <p className="text-[9px] text-app-text-muted mb-1.5 leading-relaxed">{th.note}</p>
         <div className="flex flex-wrap gap-x-3 gap-y-0">
-          <span className="font-mono text-[9px] text-app-text-faint">TEMP: <span style={{ color:col }}>{th.temp}°C</span></span>
-          <span className="font-mono text-[9px] text-app-text-faint">CONF: <span className="text-app-text">{th.conf}%</span></span>
-          <span className="font-mono text-[9px] text-app-text-faint">MOVE: <span className="text-app-text">{th.move}</span></span>
+          <span className="font-mono text-[9px] text-app-text-faint">{t('surv.tempLabel')}: <span style={{ color:col }}>{th.temp}°C</span></span>
+          <span className="font-mono text-[9px] text-app-text-faint">{t('surv.confLabel')}: <span className="text-app-text">{th.conf}%</span></span>
+          <span className="font-mono text-[9px] text-app-text-faint">{t('surv.moveLabel')}: <span className="text-app-text">{th.move}</span></span>
         </div>
       </div>
     </div>
@@ -601,6 +625,7 @@ function ThermalRow({ th }) {
 }
 
 function CorrelCard({ cor }) {
+  const { t } = useT();
   const col = threatColor(cor.score);
   return (
     <div className="rounded-lg border p-3 flex flex-col gap-2.5"
@@ -612,7 +637,7 @@ function CorrelCard({ cor }) {
             <span className="font-mono text-[8.5px] text-app-text-faint">{cor.id}</span>
             <span className="rounded px-1.5 py-0.5 font-mono text-[7.5px] font-bold"
               style={{ background:`${col}1e`, color:col, border:`1px solid ${col}3e` }}>
-              {threatLabel(cor.score)}
+              {t('tone.threat.' + threatLevelKey(cor.score))}
             </span>
           </div>
           <p className="text-[12px] font-extrabold text-app-text leading-snug">{cor.title}</p>
@@ -622,7 +647,7 @@ function CorrelCard({ cor }) {
 
       {/* Linked events */}
       <div>
-        <SectionLabel className="mb-1.5">Linked Detection Events ({cor.linked.length})</SectionLabel>
+        <SectionLabel className="mb-1.5">{t('surv.linkedEvents')} ({cor.linked.length})</SectionLabel>
         <div className="space-y-1">
           {cor.linked.map((ev, i) => (
             <div key={i} className="flex items-center gap-2 rounded px-2 py-1.5 border border-app-border" style={{ background:'rgba(0,0,0,0.2)' }}>
@@ -638,7 +663,7 @@ function CorrelCard({ cor }) {
       {/* Affected areas */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <SectionLabel className="mb-1">Affected Areas</SectionLabel>
+          <SectionLabel className="mb-1">{t('surv.affectedAreas')}</SectionLabel>
           <div className="flex flex-wrap gap-1">
             {cor.areas.map(a => (
               <span key={a} className="chip chip-ghost text-[8.5px]">{a}</span>
@@ -646,7 +671,7 @@ function CorrelCard({ cor }) {
           </div>
         </div>
         <div>
-          <SectionLabel className="mb-1">Associated Inmates</SectionLabel>
+          <SectionLabel className="mb-1">{t('surv.assocInmates')}</SectionLabel>
           <div className="flex flex-wrap gap-1">
             {cor.inmates.map(m => (
               <span key={m} className="chip chip-warning text-[8.5px]">{m}</span>
@@ -657,13 +682,13 @@ function CorrelCard({ cor }) {
 
       {/* Prediction */}
       <div className="rounded px-2.5 py-2 border" style={{ background:'rgba(239,68,68,0.05)', borderColor:'rgba(239,68,68,0.18)' }}>
-        <SectionLabel className="mb-0.5">Predicted Outcome</SectionLabel>
+        <SectionLabel className="mb-0.5">{t('surv.predictedOutcome')}</SectionLabel>
         <p className="text-[9.5px] text-app-text-muted leading-relaxed">{cor.prediction}</p>
       </div>
 
       {/* Action */}
       <div className="rounded px-2.5 py-2 border" style={{ background:'rgba(56,189,248,0.05)', borderColor:'rgba(56,189,248,0.18)' }}>
-        <SectionLabel className="mb-0.5">Recommended Action</SectionLabel>
+        <SectionLabel className="mb-0.5">{t('surv.recommendedAction')}</SectionLabel>
         <p className="text-[9.5px] text-app-text leading-relaxed">{cor.action}</p>
       </div>
     </div>
@@ -674,6 +699,7 @@ function CorrelCard({ cor }) {
 export default function SurveillanceCenter() {
   const c    = useCacco();
   const now0 = useRef(Date.now()).current;
+  const { t } = useT();
 
   /* ─ Camera state ──────────────────────────────────────────────────── */
   const displayCams = useMemo(() => c.cameras.slice(0, 16), [c.cameras]);
@@ -700,17 +726,29 @@ export default function SurveillanceCenter() {
     return Math.round(active.reduce((s, d) => s + d.threatScore, 0) / active.length);
   }, [detections]);
 
+  /* ─ Translated THREAT_LEVELS ─────────────────────────────────────── */
+  const THREAT_LEVELS = useMemo(() => THREAT_LEVELS_RAW.map(tl => ({
+    ...tl,
+    label: t('surv.' + tl.labelKey),
+    description: t('surv.' + tl.descKey),
+  })), [t]);
+
   /* ─ Threat level (from facility security level 0–4) ──────────────── */
   const tl = THREAT_LEVELS[Math.min(c.facility.securityLevel, 4)] ?? THREAT_LEVELS[2];
 
   /* ─ Detection filter ──────────────────────────────────────────────── */
+  const [escalateModal, setEscalateModal] = useState(null);
+  const [cameraActionModal, setCameraActionModal] = useState(null);
+  const [toast, setToast] = useState(null);
+  const flashMsg = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
+
   const [detFilter, setDetFilter] = useState('all');
-  const DET_FILTERS = [
-    { value:'all',      label:'All'      },
-    { value:'critical', label:'Critical' },
-    { value:'high',     label:'High'     },
-    { value:'active',   label:'Active'   },
-  ];
+  const DET_FILTERS = useMemo(() => [
+    { value:'all',      label:t('surv.allFilter')      },
+    { value:'critical', label:t('surv.criticalFilter') },
+    { value:'high',     label:t('surv.highFilter')     },
+    { value:'active',   label:t('surv.activeFilter')   },
+  ], [t]);
   const filteredDets = useMemo(() => detections.filter(d => {
     if (detFilter === 'critical') return d.sev === 'critical';
     if (detFilter === 'high')     return d.sev === 'critical' || d.sev === 'high';
@@ -720,11 +758,11 @@ export default function SurveillanceCenter() {
 
   /* ─ Camera filter ─────────────────────────────────────────────────── */
   const [camFilter, setCamFilter] = useState('all');
-  const CAM_FILTERS = [
-    { value:'all',     label:'All'     },
-    { value:'flagged', label:'Flagged' },
-    { value:'offline', label:'Offline' },
-  ];
+  const CAM_FILTERS = useMemo(() => [
+    { value:'all',     label:t('surv.allCameras')    },
+    { value:'flagged', label:t('surv.flaggedFilter') },
+    { value:'offline', label:t('surv.offlineFilter') },
+  ], [t]);
   const visibleCams = useMemo(() => displayCams.filter(cam => {
     if (camFilter === 'flagged') return cam.aiFlags > 0;
     if (camFilter === 'offline') return !cam.online;
@@ -735,22 +773,74 @@ export default function SurveillanceCenter() {
   return (
     <div className="space-y-4">
 
+      {toast && (<div className="fixed bottom-9 right-4 z-[400] animate-slide-up rounded-lg border px-4 py-3 text-xs font-semibold shadow-2xl" style={{ background: 'var(--app-panel-2)', borderColor: 'var(--app-accent-border)', color: 'var(--app-accent)' }}>
+        <Icon name="check" className="mr-1.5 inline w-3.5 h-3.5"/>{toast}
+      </div>)}
+
+      {escalateModal && (
+        <ActionModal
+          title={t('surv.escaleTitle')}
+          subtitle={`${escalateModal.tKey ? t('surv.' + escalateModal.tKey) : escalateModal.label} · ${escalateModal.location}`}
+          fields={[
+            { id: 'response', label: t('surv.escaleResponse'), type: 'select', required: true, options: [
+              { value: 'dispatch', label: t('surv.escaleDispatch') },
+              { value: 'verify', label: t('surv.escaleVerify') },
+              { value: 'lockdown', label: t('surv.escaleLockdown') },
+              { value: 'medical', label: t('surv.escaleMedical') },
+              { value: 'log', label: t('surv.escaleLog') },
+            ]},
+            { id: 'team', label: t('surv.escaleTeam'), type: 'select', options: c.teams.map(tm => ({ value: tm.callsign, label: tm.callsign })) },
+            { id: 'priority', label: t('surv.escalePriority'), type: 'select', required: true, defaultValue: escalateModal.sev, options: [
+              { value: 'critical', label: t('surv.escaleCritical') },
+              { value: 'high', label: t('surv.escaleHigh') },
+              { value: 'moderate', label: t('surv.escaleModerate') },
+            ]},
+            { id: 'notes', label: t('surv.escaleNotes'), type: 'textarea', placeholder: t('surv.escaleNotesPh') },
+          ]}
+          confirmLabel={t('surv.escaleConfirm')}
+          confirmTone="danger"
+          onConfirm={(vals) => { flashMsg(`${escalateModal.id} — ${vals.response}`); }}
+          onClose={() => setEscalateModal(null)}
+        />
+      )}
+
+      {cameraActionModal && (
+        <ActionModal
+          title={`${t('surv.camActionTitle')} — ${cameraActionModal.id}`}
+          subtitle={`${t('surv.camZone')}: ${cameraActionModal.zoneId} · ${t('surv.camStatus')}: ${cameraActionModal.online ? t('surv.camOperative') : t('surv.camOffline')}`}
+          fields={[
+            { id: 'action', label: t('surv.camActionLabel'), type: 'select', required: true, options: [
+              { value: 'ptz_adjust', label: t('surv.camPtz') },
+              { value: 'maintenance', label: t('surv.camMaint') },
+              { value: 'flag_review', label: t('surv.camReview') },
+              { value: 'snapshot', label: t('surv.camSnapshot') },
+              { value: 'reset', label: t('surv.camReset') },
+            ]},
+            { id: 'notes', label: t('surv.camActionDesc'), type: 'textarea', required: true, placeholder: t('surv.camActionDescPh') },
+          ]}
+          confirmLabel={t('surv.camActionConfirm')}
+          confirmTone="primary"
+          onConfirm={(vals) => { flashMsg(`${vals.action} — ${cameraActionModal.id}`); }}
+          onClose={() => setCameraActionModal(null)}
+        />
+      )}
+
       {/* ═══════════════════════════════════════════════════════════════
           PAGE HEADER
           ══════════════════════════════════════════════════════════════ */}
       <PageHeader
         code="SURV"
-        title="Surveillance & Security Intelligence Center"
-        subtitle="Centralized CCTV operations · AI detection engine · Perimeter intelligence · Incident correlation"
+        title={t('surv.titleFull')}
+        subtitle={t('surv.subtitleFull')}
         actions={<>
-          <Chip tone="danger" dot>{offline} OFFLINE</Chip>
+          <Chip tone="danger" dot>{offline} {t('surv.offline')}</Chip>
           {criticalDets > 0 && (
-            <Chip tone="danger"><Dot color="#ef4444" pulse size={5}/>&nbsp;{criticalDets} CRITICAL</Chip>
+            <Chip tone="danger"><Dot color="#ef4444" pulse size={5}/>&nbsp;{criticalDets} {t('surv.criticalLabel')}</Chip>
           )}
-          <Chip tone="success"><Dot color="#10b981" pulse size={5}/>&nbsp;RECORDING</Chip>
+          <Chip tone="success"><Dot color="#10b981" pulse size={5}/>&nbsp;{t('surv.recordingChip')}</Chip>
           <span className="font-mono text-[9px] font-bold px-2.5 py-1.5 rounded-md"
             style={{ background:`${tl.color}14`, color:tl.color, border:`1px solid ${tl.color}44` }}>
-            THREAT: {tl.code}
+            {t('surv.currentThreatLevel')}: {tl.code}
           </span>
         </>}
       />
@@ -760,46 +850,46 @@ export default function SurveillanceCenter() {
           ══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <MetricCard
-          label="Total Cameras"
+          label={t('surv.totalCameras')}
           value={c.cameras.length}
           icon={<Icon name="surveillance" className="w-4 h-4"/>}
           tone="#38bdf8"
-          sub="facility-wide coverage"
+          sub={t('surv.facilityCoverage')}
         />
         <MetricCard
-          label="Online Cameras"
+          label={t('surv.onlineCameras')}
           value={online}
           icon={<Icon name="check" className="w-4 h-4"/>}
           tone="#10b981"
-          sub={`${Math.round((online / c.cameras.length) * 100)}% operational`}
+          sub={`${Math.round((online / c.cameras.length) * 100)}${t('surv.pctOperational')}`}
         />
         <MetricCard
-          label="Offline Cameras"
+          label={t('surv.offlineCameras')}
           value={offline}
           icon={<Icon name="alert" className="w-4 h-4"/>}
           tone="#ef4444"
-          sub="maintenance required"
+          sub={t('surv.maintenanceReq')}
         />
         <MetricCard
-          label="Critical Detections"
+          label={t('surv.criticalDetections')}
           value={criticalDets}
           icon={<Icon name="ai" className="w-4 h-4"/>}
           tone="#ef4444"
-          sub="unresolved critical events"
+          sub={t('surv.unresolvedCritical')}
         />
         <MetricCard
-          label="Open Incidents"
+          label={t('surv.openIncidents')}
           value={openIncidents}
           icon={<Icon name="alert" className="w-4 h-4"/>}
           tone="#f59e0b"
-          sub="active investigations"
+          sub={t('surv.activeInvestigations')}
         />
         <MetricCard
-          label="Threat Score"
+          label={t('surv.threatScore')}
           value={facThreat}
           icon={<Icon name="shield" className="w-4 h-4"/>}
           tone={threatColor(facThreat)}
-          sub={threatLabel(facThreat)}
+          sub={t('tone.threat.' + threatLevelKey(facThreat))}
         />
       </div>
 
@@ -811,13 +901,13 @@ export default function SurveillanceCenter() {
         {/* ── Camera grid ─────────────────────────────────────────── */}
         <Panel
           className="xl:col-span-3"
-          title="Live Camera Matrix"
+          title={t('surv.liveCamMatrix')}
           icon={<Icon name="surveillance" className="w-4 h-4"/>}
           subtitle={`${displayCams.length} simultaneous feeds · ${online} online · ${offline} offline`}
           live
           actions={
             <div className="flex items-center gap-2">
-              <Chip tone="success"><Dot color="#10b981" pulse size={4}/>&nbsp;AI ACTIVE</Chip>
+              <Chip tone="success"><Dot color="#10b981" pulse size={4}/>&nbsp;{t('surv.aiActive')}</Chip>
               <Segmented options={CAM_FILTERS} value={camFilter} onChange={setCamFilter}/>
             </div>
           }
@@ -839,16 +929,16 @@ export default function SurveillanceCenter() {
           </div>
           {visibleCams.length === 0 && (
             <div className="flex h-28 items-center justify-center text-xs text-app-text-faint">
-              No cameras match current filter
+              {t('surv.noCamsFilter')}
             </div>
           )}
           {/* Legend */}
           <div className="mt-3 flex flex-wrap gap-4 pt-2.5" style={{ borderTop:'1px solid var(--app-border)' }}>
             {[
-              { col:'#38bdf8', label:'Selected' },
-              { col:'#10b981', label:'Online'   },
-              { col:'#ef4444', label:'Offline'  },
-              { col:'#f59e0b', label:'AI Flag'  },
+              { col:'#38bdf8', label:t('surv.selected') },
+              { col:'#10b981', label:t('surv.online')   },
+              { col:'#ef4444', label:t('surv.offline')  },
+              { col:'#f59e0b', label:t('surv.aiFlag')   },
             ].map(({ col, label }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-sm shrink-0" style={{ background:col }}/>
@@ -858,66 +948,23 @@ export default function SurveillanceCenter() {
             <div className="ml-auto flex items-center gap-1.5">
               <Dot color="#ef4444" pulse size={5}/>
               <span className="font-mono text-[8.5px] font-bold" style={{ color:'#ef444488' }}>● REC</span>
-              <span className="text-[9px] text-app-text-faint ml-1">Recording active on all online cameras</span>
+              <span className="text-[9px] text-app-text-faint ml-1">{t('surv.recordingAllCams')}</span>
             </div>
           </div>
         </Panel>
 
         {/* ── Camera Inspector ────────────────────────────────────── */}
         <Panel
-          title="Camera Inspector"
+          title={t('surv.camInspector')}
           icon={<Icon name="crosshair" className="w-4 h-4"/>}
-          subtitle={selectedCam ? `${selectedCam.id} · ${selectedCam.zoneId}` : 'Select a camera'}
+          subtitle={selectedCam ? `${selectedCam.id} · ${selectedCam.zoneId}` : t('surv.selectCamera')}
           bodyClass="p-0"
         >
           <div className="overflow-y-auto p-3" style={{ maxHeight:660 }}>
-            <CameraDetail cam={selectedCam} idx={selIdx} zones={c.zones}/>
+            <CameraDetail cam={selectedCam} idx={selIdx} zones={c.zones} onAction={setCameraActionModal}/>
           </div>
         </Panel>
       </div>
-
-      {/* Camera health table */}
-      <Panel
-        title="Camera Health Matrix"
-        icon={<Icon name="activity" className="w-4 h-4"/>}
-        subtitle="All facility cameras · Health, status, and AI detection summary"
-        bodyClass="overflow-x-auto"
-      >
-        <table className="dtable">
-          <thead>
-            <tr>
-              <th>ID</th><th>Label</th><th>Zone</th><th>Status</th>
-              <th>FPS</th><th>AI Flags</th><th>Threat</th><th>Network</th>
-            </tr>
-          </thead>
-          <tbody>
-            {c.cameras.map((cam, i) => {
-              const score = cam.aiFlags > 0 ? 45 + cam.aiFlags * 14 : 10;
-              return (
-                <tr key={cam.id} className="cursor-pointer" onClick={() => { if (i < 16) setSelIdx(i); }}>
-                  <td className="font-mono text-[10px] text-app-text-faint">{cam.id}</td>
-                  <td className="font-semibold text-app-text">{cam.label}</td>
-                  <td className="font-mono text-[10px]">{cam.zoneId}</td>
-                  <td>
-                    <span className={`chip chip-${cam.online ? 'success' : 'danger'} text-[9px]`}>
-                      <span className={`dot${cam.online ? ' dot-pulse' : ''}`} style={{ background:'currentColor', width:4, height:4 }}/>
-                      {cam.online ? 'ONLINE' : 'OFFLINE'}
-                    </span>
-                  </td>
-                  <td className="font-mono text-[11px]" style={{ color: cam.fps >= 25 ? '#10b981' : cam.fps > 0 ? '#f59e0b' : '#ef4444' }}>{cam.fps}</td>
-                  <td className="font-mono text-[11px]" style={{ color: cam.aiFlags > 0 ? '#f59e0b' : undefined }}>{cam.aiFlags}</td>
-                  <td style={{ width:120 }}>
-                    <ThreatBar score={score} height={4}/>
-                  </td>
-                  <td style={{ width:100 }}>
-                    <Meter value={cam.online ? cam.fps : 0} max={30} color={cam.online ? '#10b981' : '#ef4444'} height={4}/>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Panel>
 
       {/* ═══════════════════════════════════════════════════════════════
           SECTION 3 — AI DETECTION ENGINE
@@ -927,9 +974,9 @@ export default function SurveillanceCenter() {
         {/* ── Real-time detection stream ───────────────────────────── */}
         <Panel
           className="xl:col-span-2"
-          title="AI Detection Engine"
+          title={t('surv.aiDetEngine')}
           icon={<Icon name="ai" className="w-4 h-4"/>}
-          subtitle={`${detections.length} events · ${criticalDets} critical active · Continuous feed from all ${c.cameras.length} cameras`}
+          subtitle={`${detections.length} events · ${criticalDets} ${t('surv.criticalLabel').toLowerCase()} active · Continuous feed from all ${c.cameras.length} cameras`}
           live
           actions={<Segmented options={DET_FILTERS} value={detFilter} onChange={setDetFilter}/>}
           bodyClass="p-3"
@@ -937,10 +984,10 @@ export default function SurveillanceCenter() {
           <div className="space-y-2 overflow-y-auto" style={{ maxHeight:560 }}>
             {filteredDets.length === 0 ? (
               <div className="flex h-28 items-center justify-center text-xs text-app-text-faint">
-                No detections match current filter
+                {t('surv.noDetections')}
               </div>
             ) : (
-              filteredDets.map(det => <DetRow key={det.id} det={det}/>)
+              filteredDets.map(det => <DetRow key={det.id} det={det} onEscalate={setEscalateModal}/>)
             )}
           </div>
         </Panel>
@@ -949,13 +996,13 @@ export default function SurveillanceCenter() {
         <div className="space-y-4">
 
           {/* Threat distribution */}
-          <Panel title="Threat Distribution" icon={<Icon name="activity" className="w-4 h-4"/>} bodyClass="p-3">
+          <Panel title={t('surv.threatDist')} icon={<Icon name="activity" className="w-4 h-4"/>} bodyClass="p-3">
             <div className="space-y-3">
               {[
-                { label:'Critical', sev:'critical', col:'#ef4444' },
-                { label:'High',     sev:'high',     col:'#f59e0b' },
-                { label:'Moderate', sev:'moderate', col:'#38bdf8' },
-                { label:'Low',      sev:'low',      col:'#10b981' },
+                { label:t('tone.threat.critical'), sev:'critical', col:'#ef4444' },
+                { label:t('tone.threat.high'),     sev:'high',     col:'#f59e0b' },
+                { label:t('tone.threat.moderate'), sev:'moderate', col:'#38bdf8' },
+                { label:t('tone.threat.low'),      sev:'low',      col:'#10b981' },
               ].map(({ label, sev, col }) => {
                 const cnt = detections.filter(d => d.sev === sev).length;
                 const pct = detections.length > 0 ? Math.round((cnt / detections.length) * 100) : 0;
@@ -973,14 +1020,14 @@ export default function SurveillanceCenter() {
               })}
             </div>
             <div className="mt-3 pt-3 space-y-1" style={{ borderTop:'1px solid var(--app-border)' }}>
-              <SectionLabel className="mb-2">Status Breakdown</SectionLabel>
+              <SectionLabel className="mb-2">{t('surv.statusBreakdown')}</SectionLabel>
               {Object.entries(DET_STATUS_COLOR).map(([status, col]) => {
                 const cnt = detections.filter(d => d.status === status).length;
                 if (cnt === 0) return null;
                 return (
                   <div key={status} className="flex items-center gap-2">
                     <Dot color={col} size={5}/>
-                    <span className="text-[9.5px] text-app-text-muted flex-1">{status}</span>
+                    <span className="text-[9.5px] text-app-text-muted flex-1">{t('surv.detStatus' + status)}</span>
                     <span className="font-mono text-[10px] font-bold" style={{ color:col }}>{cnt}</span>
                   </div>
                 );
@@ -989,7 +1036,7 @@ export default function SurveillanceCenter() {
           </Panel>
 
           {/* Most active zones */}
-          <Panel title="Most Active Zones" icon={<Icon name="dotsGrid" className="w-4 h-4"/>} bodyClass="p-3 space-y-2">
+          <Panel title={t('surv.mostActiveZones')} icon={<Icon name="dotsGrid" className="w-4 h-4"/>} bodyClass="p-3 space-y-2">
             {c.zones
               .filter(z => z.incidents24h > 0)
               .sort((a,b) => b.incidents24h - a.incidents24h)
@@ -1015,9 +1062,9 @@ export default function SurveillanceCenter() {
           SECTION 4 — INCIDENT CORRELATION ENGINE
           ══════════════════════════════════════════════════════════════ */}
       <Panel
-        title="Incident Correlation Engine"
+        title={t('surv.incCorrEngine')}
         icon={<Icon name="intel" className="w-4 h-4"/>}
-        subtitle="AI-linked multi-event security correlation · Behavioral pattern synthesis · Predictive threat assessment"
+        subtitle={t('surv.incCorrSubtitle')}
         bodyClass="p-3"
       >
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
@@ -1033,9 +1080,9 @@ export default function SurveillanceCenter() {
         {/* ── Perimeter zones ──────────────────────────────────────── */}
         <Panel
           className="xl:col-span-2"
-          title="Perimeter Security Intelligence"
+          title={t('surv.perimSecIntel')}
           icon={<Icon name="shield" className="w-4 h-4"/>}
-          subtitle="Fence sensors · Thermal cameras · Motion detection · Guard towers · UAV surveillance"
+          subtitle={t('surv.perimSubtitle')}
           bodyClass="p-3"
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1057,9 +1104,9 @@ export default function SurveillanceCenter() {
 
         {/* ── Thermal monitoring ───────────────────────────────────── */}
         <Panel
-          title="Thermal Analytics"
+          title={t('surv.thermalAnalytics')}
           icon={<Icon name="activity" className="w-4 h-4"/>}
-          subtitle="Infrared detection feed · Signature classification engine"
+          subtitle={t('surv.thermalSubtitle')}
           bodyClass="p-3"
         >
           <div>
@@ -1067,14 +1114,14 @@ export default function SurveillanceCenter() {
           </div>
           {/* Legend */}
           <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop:'1px solid var(--app-border)' }}>
-            <SectionLabel className="mb-2">Classification Key</SectionLabel>
-            {['Human Detection','Vehicle Detection','Animal Detection','Unknown Heat Signature'].map((t,i) => {
+            <SectionLabel className="mb-2">{t('surv.classificationKey')}</SectionLabel>
+            {[t('surv.humanDetection'),t('surv.vehicleDetection'),t('surv.animalDetection'),t('surv.unknownHeat')].map((lbl,i) => {
               const icons = ['👤','🚗','🐾','⚠'];
               const cols  = ['#ef4444','#f59e0b','#10b981','#f97316'];
               return (
-                <div key={t} className="flex items-center gap-2">
+                <div key={lbl} className="flex items-center gap-2">
                   <span className="text-[11px]">{icons[i]}</span>
-                  <span className="text-[9px] text-app-text-muted flex-1">{t}</span>
+                  <span className="text-[9px] text-app-text-muted flex-1">{lbl}</span>
                   <Dot color={cols[i]} size={4}/>
                 </div>
               );
@@ -1090,15 +1137,15 @@ export default function SurveillanceCenter() {
 
         {/* ── Threat level board ───────────────────────────────────── */}
         <Panel
-          title="Threat Escalation Dashboard"
+          title={t('surv.threatEscDash')}
           icon={<Icon name="alert" className="w-4 h-4"/>}
-          subtitle="Facility-wide security posture"
+          subtitle={t('surv.threatEscSubtitle')}
           bodyClass="p-3"
         >
           {/* Current level */}
           <div className="rounded-xl border p-5 mb-4 text-center"
             style={{ borderColor:`${tl.color}44`, background:`${tl.color}0e` }}>
-            <p className="t-label mb-2 tracking-[0.18em]">CURRENT THREAT LEVEL</p>
+            <p className="t-label mb-2 tracking-[0.18em]">{t('surv.currentThreatLevel')}</p>
             <div className="flex items-center justify-center gap-3 mb-2">
               <Dot color={tl.color} pulse size={10}/>
               <p className="font-mono text-[2.4rem] font-black tracking-widest leading-none" style={{ color:tl.color }}>
@@ -1110,7 +1157,7 @@ export default function SurveillanceCenter() {
           </div>
 
           {/* Threat scale */}
-          <SectionLabel className="mb-2">Security Posture Scale</SectionLabel>
+          <SectionLabel className="mb-2">{t('surv.secPostureScale')}</SectionLabel>
           <div className="space-y-1.5 mb-4">
             {THREAT_LEVELS.map((lvl) => (
               <div key={lvl.code} className="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-all"
@@ -1132,28 +1179,28 @@ export default function SurveillanceCenter() {
           </div>
 
           {/* Active emergencies */}
-          <SectionLabel className="mb-2">Active Emergencies</SectionLabel>
+          <SectionLabel className="mb-2">{t('surv.activeEmergencies')}</SectionLabel>
           {c.facility.lockdownZones > 0 ? (
             <div className="rounded-md border px-3 py-2.5 mb-2"
               style={{ background:'#ef444410', borderColor:'#ef444430' }}>
               <div className="flex items-center gap-2 mb-1">
                 <Dot color="#ef4444" pulse size={6}/>
-                <span className="text-[11px] font-bold" style={{ color:'#ef4444' }}>LOCKDOWN IN EFFECT</span>
+                <span className="text-[11px] font-bold" style={{ color:'#ef4444' }}>{t('surv.lockdownEffect')}</span>
               </div>
               <p className="text-[9.5px] text-app-text-muted">
-                {c.facility.lockdownZones} zone{c.facility.lockdownZones > 1 ? 's' : ''} under active lockdown protocol
+                {c.facility.lockdownZones} {c.facility.lockdownZones > 1 ? t('surv.lockdownZonesSuffix') : t('surv.lockdownZoneSuffix')}
               </p>
             </div>
           ) : (
             <div className="rounded-md border px-3 py-2.5 mb-2"
               style={{ background:'#10b98110', borderColor:'#10b98130' }}>
-              <p className="text-[11px] font-bold" style={{ color:'#10b981' }}>NO ACTIVE EMERGENCIES</p>
-              <p className="text-[9.5px] text-app-text-muted mt-0.5">All protocols within normal parameters</p>
+              <p className="text-[11px] font-bold" style={{ color:'#10b981' }}>{t('surv.noActiveEmergencies')}</p>
+              <p className="text-[9.5px] text-app-text-muted mt-0.5">{t('surv.allProtocolsNormal')}</p>
             </div>
           )}
 
           {/* High risk areas */}
-          <SectionLabel className="mb-2 mt-3">High-Risk Areas (24h)</SectionLabel>
+          <SectionLabel className="mb-2 mt-3">{t('surv.highRiskAreas')}</SectionLabel>
           <div className="space-y-1.5">
             {c.zones
               .filter(z => z.risk === 'extreme' || z.risk === 'high' || z.incidents24h >= 2)
@@ -1176,9 +1223,9 @@ export default function SurveillanceCenter() {
         {/* ── AI Predictive Analytics ──────────────────────────────── */}
         <Panel
           className="xl:col-span-2"
-          title="AI Predictive Analytics"
+          title={t('surv.aiPredAnalytics')}
           icon={<Icon name="ai" className="w-4 h-4"/>}
-          subtitle="Zone risk forecasting · Behavioral anomaly detection · Threat prediction models"
+          subtitle={t('surv.aiPredSubtitle')}
           bodyClass="p-3"
         >
           {/* Zone risk predictions */}
@@ -1203,7 +1250,7 @@ export default function SurveillanceCenter() {
                     <Ring value={zp.risk} max={100} size={46} stroke={5} color={col} label={zp.risk}/>
                   </div>
                   <ThreatBar score={zp.risk} height={4}/>
-                  <SectionLabel className="mt-2 mb-1">AI Reasoning</SectionLabel>
+                  <SectionLabel className="mt-2 mb-1">{t('surv.aiReasoning')}</SectionLabel>
                   <p className="text-[8.5px] text-app-text-muted leading-relaxed">{zp.reason}</p>
                 </div>
               );
@@ -1213,13 +1260,13 @@ export default function SurveillanceCenter() {
           {/* Behavioral anomalies */}
           <div className="mt-3 pt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" style={{ borderTop:'1px solid var(--app-border)' }}>
             <div>
-              <SectionLabel className="mb-2">Behavioral Anomalies Detected</SectionLabel>
+              <SectionLabel className="mb-2">{t('surv.behavioralAnomalies')}</SectionLabel>
               <div className="space-y-1.5">
                 {[
-                  { label:'Subject CR-2048 — behavioral deviation +2.7σ', sev:'critical' },
-                  { label:'Block B — coordinated movement pattern active', sev:'high' },
-                  { label:'North fence — repeated probing sub-pattern',    sev:'high' },
-                  { label:'West loading bay — unauthorized vehicle access',sev:'moderate' },
+                  { label:t('surv.behav1'), sev:'critical' },
+                  { label:t('surv.behav2'), sev:'high' },
+                  { label:t('surv.behav3'), sev:'high' },
+                  { label:t('surv.behav4'), sev:'moderate' },
                 ].map((a, i) => (
                   <div key={i} className="flex items-start gap-2 rounded px-2 py-1.5 border border-app-border"
                     style={{ background:'rgba(0,0,0,0.2)' }}>
@@ -1230,7 +1277,7 @@ export default function SurveillanceCenter() {
               </div>
             </div>
             <div>
-              <SectionLabel className="mb-2">Security Recommendations</SectionLabel>
+              <SectionLabel className="mb-2">{t('surv.secRecommendations')}</SectionLabel>
               <div className="space-y-1.5">
                 {c.recommendations.slice(0,4).map(r => (
                   <div key={r.id} className="rounded px-2 py-1.5 border border-app-border"
@@ -1238,7 +1285,7 @@ export default function SurveillanceCenter() {
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="font-mono text-[8px] font-bold"
                         style={{ color: r.priority === 'critical' ? '#ef4444' : r.priority === 'high' ? '#f59e0b' : '#8b5cf6' }}>
-                        {r.priority.toUpperCase()}
+                        {t('tone.priority.' + r.priority)}
                       </span>
                     </div>
                     <p className="text-[9px] font-semibold text-app-text leading-snug">{r.title}</p>
@@ -1250,7 +1297,7 @@ export default function SurveillanceCenter() {
 
           {/* Response team readiness */}
           <div className="mt-3 pt-3" style={{ borderTop:'1px solid var(--app-border)' }}>
-            <SectionLabel className="mb-2">Response Team Readiness</SectionLabel>
+            <SectionLabel className="mb-2">{t('surv.respTeamReadiness')}</SectionLabel>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               {c.teams.map(team => {
                 const col = { standby:'#10b981', deployed:'#38bdf8', responding:'#f59e0b', unavailable:'#ef4444' }[team.status] ?? '#666';
@@ -1260,7 +1307,7 @@ export default function SurveillanceCenter() {
                     <p className="font-mono text-[9px] font-bold text-app-text">{team.callsign}</p>
                     <p className="font-mono text-[15px] font-extrabold mt-1.5 leading-none" style={{ color:col }}>{team.readiness}%</p>
                     <Meter value={team.readiness} max={100} color={col} height={3} className="mt-1.5"/>
-                    <p className="font-mono text-[8px] mt-1.5 font-bold" style={{ color:col }}>{team.status.toUpperCase()}</p>
+                    <p className="font-mono text-[8px] mt-1.5 font-bold" style={{ color:col }}>{t('sec.teamStatus.' + team.status) || team.status.toUpperCase()}</p>
                     <p className="font-mono text-[8px] text-app-text-faint">{team.members}m</p>
                   </div>
                 );

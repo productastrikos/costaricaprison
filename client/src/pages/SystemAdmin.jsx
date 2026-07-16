@@ -4,7 +4,7 @@
    ════════════════════════════════════════════════════════════════════ */
 import React, { useState } from 'react';
 import { useCacco } from '../services/CaccoData';
-import { Panel, MetricCard, Chip, PageHeader, KV, Meter, Dot, Ring } from '../components/ui';
+import { Panel, MetricCard, Chip, PageHeader, KV, Meter, Dot, Ring, ActionModal } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { useT } from '../contexts/LanguageContext';
 const SERVICES = [
@@ -36,7 +36,11 @@ const USR_CHIP = { active: 'success', inactive: 'ghost', locked: 'danger' };
 const CLEARANCE_COLOR = ['', '#526278', '#38bdf8', '#f59e0b', '#f97316', '#ef4444'];
 export default function SystemAdmin() {
     const c = useCacco();
+    const { t } = useT();
     const [toast, setToast] = useState(null);
+    const [addUserModal, setAddUserModal] = useState(false);
+    const [editUserModal, setEditUserModal] = useState(null);
+    const [maintenanceModal, setMaintenanceModal] = useState(null);
     const online = SERVICES.filter((s) => s.status === 'online').length;
     const degraded = SERVICES.filter((s) => s.status === 'degraded').length;
     const avgLatency = Math.round(SERVICES.reduce((s, x) => s + x.latencyMs, 0) / SERVICES.length);
@@ -44,32 +48,128 @@ export default function SystemAdmin() {
     const activeSessions = USERS.filter((u) => u.status === 'active').length;
     const noMfa = USERS.filter((u) => !u.mfaEnabled && u.status === 'active').length;
     const act = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
-    const { t } = useT();
+
+    const MAINT_ACTIONS = [
+        { labelKey: 'admin.maintRotateCodes', tone: 'btn-primary' },
+        { labelKey: 'admin.maintClearAiCache', tone: 'btn-ghost' },
+        { labelKey: 'admin.maintExportAudit', tone: 'btn-ghost' },
+        { labelKey: 'admin.maintSyncMjsp', tone: 'btn-ghost' },
+        { labelKey: 'admin.maintDiagnostics', tone: 'btn-ghost' },
+        { labelKey: 'admin.maintEmergencyShutdown', tone: 'btn-danger' },
+    ];
+
     return (<div className="space-y-4">
+
+      {addUserModal && (
+        <ActionModal
+          title={t('common.addUser')}
+          subtitle={t('admin.addUserModalSubtitle')}
+          fields={[
+            { id: 'name', label: t('admin.nameLabel'), type: 'text', required: true, placeholder: t('admin.namePh') },
+            { id: 'role', label: t('admin.thRole'), type: 'select', required: true, options: [
+              { value: 'Director', label: t('admin.roleDirector') },
+              { value: 'Commander', label: t('admin.roleCommander') },
+              { value: 'Intelligence Analyst', label: t('admin.roleAnalyst') },
+              { value: 'Security Officer', label: t('admin.roleSecOfficer') },
+              { value: 'Medical', label: t('admin.roleMedical') },
+              { value: 'Maintenance', label: t('admin.roleMaintenance') },
+            ]},
+            { id: 'clearance', label: t('admin.thClearance'), type: 'select', required: true, options: [
+              { value: '1', label: `${t('admin.clearancePrefix')} 1` },
+              { value: '2', label: `${t('admin.clearancePrefix')} 2` },
+              { value: '3', label: `${t('admin.clearancePrefix')} 3` },
+              { value: '4', label: `${t('admin.clearancePrefix')} 4` },
+              { value: '5', label: t('admin.clearance5Max') },
+            ]},
+            { id: 'mfa', label: t('admin.mfaLabel'), type: 'select', required: true, defaultValue: 'yes', options: [
+              { value: 'yes', label: t('admin.mfaEnabledRequired') },
+              { value: 'no', label: t('admin.mfaDisabledNotRec') },
+            ]},
+            { id: 'notes', label: t('common.modalNotes'), type: 'textarea', placeholder: t('common.modalNotesPlaceholder') },
+          ]}
+          confirmLabel={t('admin.confirmAddUser')}
+          confirmTone="primary"
+          onConfirm={(vals) => { act(`${vals.name} — ${t('admin.clearancePrefix')} ${vals.clearance}`); }}
+          onClose={() => setAddUserModal(false)}
+        />
+      )}
+
+      {editUserModal && (
+        <ActionModal
+          title={`${t('admin.editUserTitle')} — ${editUserModal.name}`}
+          subtitle={`${editUserModal.id} · ${editUserModal.role} · ${t('admin.clearancePrefix')} ${editUserModal.clearance}`}
+          fields={[
+            { id: 'role', label: t('admin.thRole'), type: 'select', required: true, defaultValue: editUserModal.role, options: [
+              { value: 'Director', label: t('admin.roleDirector') },
+              { value: 'Commander', label: t('admin.roleCommander') },
+              { value: 'Intelligence Analyst', label: t('admin.roleAnalyst') },
+              { value: 'Security Officer', label: t('admin.roleSecOfficer') },
+              { value: 'Medical', label: t('admin.roleMedical') },
+            ]},
+            { id: 'clearance', label: t('admin.thClearance'), type: 'select', required: true, defaultValue: String(editUserModal.clearance), options: [
+              { value: '1', label: `${t('admin.clearancePrefix')} 1` },
+              { value: '2', label: `${t('admin.clearancePrefix')} 2` },
+              { value: '3', label: `${t('admin.clearancePrefix')} 3` },
+              { value: '4', label: `${t('admin.clearancePrefix')} 4` },
+              { value: '5', label: t('admin.clearance5Max') },
+            ]},
+            { id: 'mfa', label: t('admin.mfaStatusLabel'), type: 'select', defaultValue: editUserModal.mfaEnabled ? 'yes' : 'no', options: [
+              { value: 'yes', label: t('admin.mfaStatusEnabled') },
+              { value: 'no', label: t('admin.mfaStatusDisabled') },
+            ]},
+            { id: 'reason', label: t('admin.reasonLabel'), type: 'textarea', required: true, placeholder: t('admin.reasonPh') },
+          ]}
+          confirmLabel={t('admin.saveChanges')}
+          confirmTone="primary"
+          onConfirm={() => { act(`${editUserModal.name}`); }}
+          onClose={() => setEditUserModal(null)}
+        />
+      )}
+
+      {maintenanceModal && (
+        <ActionModal
+          title={`${maintenanceModal.label}`}
+          subtitle={t('admin.maintModalSubtitle')}
+          fields={[
+            { id: 'authorization', label: t('admin.authCodeLabel'), type: 'text', required: true, placeholder: t('admin.authCodePh') },
+            { id: 'reason', label: t('admin.maintJustLabel'), type: 'textarea', required: true, placeholder: t('admin.maintJustPh') },
+            { id: 'schedule', label: t('admin.maintScheduleLabel'), type: 'select', defaultValue: 'now', options: [
+              { value: 'now', label: t('admin.maintNow') },
+              { value: 'maintenance', label: t('admin.maintWindow') },
+              { value: 'offpeak', label: t('admin.maintOffPeak') },
+            ]},
+          ]}
+          confirmLabel={`${t('admin.maintConfirmPrefix')}: ${maintenanceModal.label}`}
+          confirmTone={maintenanceModal.tone === 'btn-danger' ? 'danger' : 'primary'}
+          onConfirm={() => { act(`${maintenanceModal.label}`); }}
+          onClose={() => setMaintenanceModal(null)}
+        />
+      )}
+
       <PageHeader code="ADMIN" title={t('admin.title')} subtitle={t('admin.subtitle')} actions={<>
-            {degraded > 0 && <Chip tone="warning" dot>{degraded} DEGRADED</Chip>}
-            <Chip tone="success"><Dot color="#10b981" pulse/>{online}/{SERVICES.length} ONLINE</Chip>
+            {degraded > 0 && <Chip tone="warning" dot>{degraded} {t('admin.chipDegraded')}</Chip>}
+            <Chip tone="success"><Dot color="#10b981" pulse/>{online}/{SERVICES.length} {t('admin.chipOperational')}</Chip>
           </>}/>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard label={t('admin.servicesOnline')} value={`${online}/${SERVICES.length}`} icon={<Icon name="activity" className="w-4 h-4"/>} tone="#10b981" sub={`${avgUptime}% avg uptime`} mono={false}/>
-        <MetricCard label={t('admin.avgLatency')} value={`${avgLatency}ms`} icon={<Icon name="gauge" className="w-4 h-4"/>} tone="#38bdf8" sub="response time" mono={false}/>
-        <MetricCard label={t('admin.sessions')} value={activeSessions} icon={<Icon name="users" className="w-4 h-4"/>} tone="#8b5cf6" sub="authenticated users"/>
-        <MetricCard label={t('admin.mfaAlert')} value={noMfa} icon={<Icon name="alert" className="w-4 h-4"/>} tone={noMfa > 0 ? '#f59e0b' : '#10b981'} sub="users without 2FA"/>
+        <MetricCard label={t('admin.servicesOnline')} value={`${online}/${SERVICES.length}`} icon={<Icon name="activity" className="w-4 h-4"/>} tone="#10b981" sub={`${avgUptime}% ${t('admin.subAvgUptime')}`} mono={false}/>
+        <MetricCard label={t('admin.avgLatency')} value={`${avgLatency}ms`} icon={<Icon name="gauge" className="w-4 h-4"/>} tone="#38bdf8" sub={t('admin.subResponseTime')} mono={false}/>
+        <MetricCard label={t('admin.sessions')} value={activeSessions} icon={<Icon name="users" className="w-4 h-4"/>} tone="#8b5cf6" sub={t('admin.subAuthUsers')}/>
+        <MetricCard label={t('admin.mfaAlert')} value={noMfa} icon={<Icon name="alert" className="w-4 h-4"/>} tone={noMfa > 0 ? '#f59e0b' : '#10b981'} sub={t('admin.subWithout2FA')}/>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {/* Service health */}
-        <Panel className="xl:col-span-2" title="Service Health Monitor" icon={<Icon name="activity" className="w-4 h-4"/>} subtitle="Real-time service availability and latency" live bodyClass="overflow-x-auto">
+        <Panel className="xl:col-span-2" title={t('admin.serviceHealthTitle')} icon={<Icon name="activity" className="w-4 h-4"/>} subtitle={t('admin.serviceHealthSub')} live bodyClass="overflow-x-auto">
           <table className="dtable">
-            <thead><tr><th>{t('admin.thService')}</th><th>{t('admin.thCategory')}</th><th>{t('admin.thStatus')}</th><th>{t('admin.thLatency')}</th><th>{t('admin.thUptime')}</th><th>Health</th></tr></thead>
+            <thead><tr><th>{t('admin.thService')}</th><th>{t('admin.thCategory')}</th><th>{t('admin.thStatus')}</th><th>{t('admin.thLatency')}</th><th>{t('admin.thUptime')}</th><th>{t('admin.colHealth')}</th></tr></thead>
             <tbody>
               {SERVICES.map((s) => (<tr key={s.id}>
                   <td className="font-semibold text-app-text">{s.name}</td>
                   <td className="text-[11px] text-app-text-muted">{s.category}</td>
                   <td>
                     <Chip tone={s.status === 'online' ? 'success' : s.status === 'degraded' ? 'warning' : 'danger'} dot>
-                      {s.status.toUpperCase()}
+                      {s.status === 'online' ? t('admin.statusOnline') : s.status === 'degraded' ? t('admin.statusDegraded') : t('admin.statusOffline')}
                     </Chip>
                   </td>
                   <td className="font-mono" style={{ color: s.latencyMs > 100 ? '#f59e0b' : '#10b981' }}>{s.latencyMs}ms</td>
@@ -84,31 +184,31 @@ export default function SystemAdmin() {
 
         {/* System health ring */}
         <div className="space-y-4">
-          <Panel title="System Health" icon={<Icon name="gauge" className="w-4 h-4"/>} bodyClass="p-4 flex flex-col items-center gap-4">
+          <Panel title={t('admin.systemHealthTitle')} icon={<Icon name="gauge" className="w-4 h-4"/>} bodyClass="p-4 flex flex-col items-center gap-4">
             <Ring value={c.systemHealth.uptimePct} size={120} stroke={10} color="#10b981" label={`${c.systemHealth.uptimePct}%`} sub="UPTIME"/>
             <div className="w-full space-y-0">
-              <KV k="Services Online" v={`${c.systemHealth.servicesOnline}/${c.systemHealth.servicesTotal}`} color="#10b981"/>
-              <KV k="API Latency" v={`${c.systemHealth.latencyMs}ms`} color={c.systemHealth.latencyMs < 50 ? '#10b981' : '#f59e0b'}/>
-              <KV k="System Status" v={c.systemHealth.status.toUpperCase()} color={c.systemHealth.status === 'normal' ? '#10b981' : '#f59e0b'}/>
-              <KV k="Last Backup" v="06:00 today" color="#10b981"/>
-              <KV k="Disk Usage" v="64%" color="#38bdf8"/>
-              <KV k="Encryption" v="AES-256 / TLS 1.3" color="#38bdf8"/>
+              <KV k={t('admin.kvServicesOnline')} v={`${c.systemHealth.servicesOnline}/${c.systemHealth.servicesTotal}`} color="#10b981"/>
+              <KV k={t('admin.kvApiLatency')} v={`${c.systemHealth.latencyMs}ms`} color={c.systemHealth.latencyMs < 50 ? '#10b981' : '#f59e0b'}/>
+              <KV k={t('admin.kvSystemStatus')} v={c.systemHealth.status.toUpperCase()} color={c.systemHealth.status === 'normal' ? '#10b981' : '#f59e0b'}/>
+              <KV k={t('admin.kvLastBackup')} v="06:00 today" color="#10b981"/>
+              <KV k={t('admin.kvDiskUsage')} v="64%" color="#38bdf8"/>
+              <KV k={t('admin.kvEncryption')} v="AES-256 / TLS 1.3" color="#38bdf8"/>
             </div>
           </Panel>
 
-          <Panel title="Security Config" icon={<Icon name="shield" className="w-4 h-4"/>} bodyClass="p-3 space-y-0">
-            <KV k="MFA Policy" v={noMfa === 0 ? 'ENFORCED' : 'PARTIAL'} color={noMfa === 0 ? '#10b981' : '#f59e0b'}/>
-            <KV k="Session Timeout" v="30 min"/>
-            <KV k="Failed Login Lockout" v="3 attempts"/>
-            <KV k="Audit Logging" v="ENABLED" color="#10b981"/>
-            <KV k="Data Classification" v="RESTRICTED" color="#ef4444"/>
-            <KV k="Last Pentest" v="42 days ago" color="#38bdf8"/>
+          <Panel title={t('admin.secConfigTitle')} icon={<Icon name="shield" className="w-4 h-4"/>} bodyClass="p-3 space-y-0">
+            <KV k={t('admin.kvMfaPolicy')} v={noMfa === 0 ? t('admin.kvEnforced') : t('admin.kvPartial')} color={noMfa === 0 ? '#10b981' : '#f59e0b'}/>
+            <KV k={t('admin.kvSessionTimeout')} v="30 min"/>
+            <KV k={t('admin.kvFailedLogin')} v="3 attempts"/>
+            <KV k={t('admin.kvAuditLogging')} v={t('admin.kvEnabled')} color="#10b981"/>
+            <KV k={t('admin.kvDataClass')} v={t('admin.kvRestricted')} color="#ef4444"/>
+            <KV k={t('admin.kvLastPentest')} v="42 days ago" color="#38bdf8"/>
           </Panel>
         </div>
       </div>
 
       {/* User access control */}
-      <Panel title={t('admin.accessTitle')} icon={<Icon name="users" className="w-4 h-4"/>} subtitle="Authenticated accounts and clearance levels" actions={<button className="btn btn-primary" onClick={() => act('User creation wizard opened')}><Icon name="users" className="w-3.5 h-3.5"/> ADD USER</button>} bodyClass="overflow-x-auto">
+      <Panel title={t('admin.accessTitle')} icon={<Icon name="users" className="w-4 h-4"/>} subtitle={t('admin.accessTableSubtitle')} actions={<button className="btn btn-primary" onClick={() => setAddUserModal(true)}><Icon name="users" className="w-3.5 h-3.5"/> {t('common.addUser')}</button>} bodyClass="overflow-x-auto">
         <table className="dtable">
           <thead><tr><th>{t('admin.thId')}</th><th>{t('admin.thUser')}</th><th>{t('admin.thRole')}</th><th>{t('admin.thClearance')}</th><th>{t('admin.thLastLogin')}</th><th>{t('admin.thMFA')}</th><th>{t('admin.thStatus')}</th><th></th></tr></thead>
           <tbody>
@@ -120,14 +220,14 @@ export default function SystemAdmin() {
                 <td className="font-mono text-[10px] text-app-text-faint">{u.lastLogin}</td>
                 <td>
                   {u.mfaEnabled
-                ? <Chip tone="success">ENABLED</Chip>
-                : <Chip tone="warning">DISABLED</Chip>}
+                ? <Chip tone="success">{t('admin.mfaEnabled')}</Chip>
+                : <Chip tone="warning">{t('admin.mfaDisabled')}</Chip>}
                 </td>
                 <td><Chip tone={USR_CHIP[u.status]} dot>{u.status.toUpperCase()}</Chip></td>
                 <td>
                   <div className="flex items-center gap-1">
-                    <button className="icon-btn" title="Edit" onClick={() => act(`Editing user ${u.name}`)}><Icon name="admin" className="w-3.5 h-3.5"/></button>
-                    {u.status === 'active' && u.id !== 'usr-001' && (<button className="icon-btn" title="Lock account" onClick={() => act(`Account ${u.id} locked`)}><Icon name="lock" className="w-3.5 h-3.5"/></button>)}
+                    <button className="icon-btn" title={t('admin.editUserTitle')} onClick={() => setEditUserModal(u)}><Icon name="admin" className="w-3.5 h-3.5"/></button>
+                    {u.status === 'active' && u.id !== 'usr-001' && (<button className="icon-btn" title={t('common.lockZone')} onClick={() => act(`${u.id}`)}><Icon name="lock" className="w-3.5 h-3.5"/></button>)}
                   </div>
                 </td>
               </tr>))}
@@ -136,18 +236,14 @@ export default function SystemAdmin() {
       </Panel>
 
       {/* Maintenance actions */}
-      <Panel title="Maintenance & Actions" icon={<Icon name="admin" className="w-4 h-4"/>} bodyClass="p-3">
+      <Panel title={t('admin.maintenanceTitle')} icon={<Icon name="admin" className="w-4 h-4"/>} bodyClass="p-3">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-          {[
-            { label: 'Rotate Access Codes', tone: 'btn-primary' },
-            { label: 'Flush AI Cache', tone: 'btn-ghost' },
-            { label: 'Export Audit Log', tone: 'btn-ghost' },
-            { label: 'Sync MJSP Link', tone: 'btn-ghost' },
-            { label: 'System Diagnostic', tone: 'btn-ghost' },
-            { label: 'Emergency Shutdown', tone: 'btn-danger' },
-        ].map(({ label, tone }) => (<button key={label} className={`btn ${tone} justify-center`} onClick={() => act(`${label} initiated`)}>
+          {MAINT_ACTIONS.map(({ labelKey, tone }) => {
+            const label = t(labelKey);
+            return (<button key={labelKey} className={`btn ${tone} justify-center`} onClick={() => setMaintenanceModal({ label, tone })}>
               {label}
-            </button>))}
+            </button>);
+          })}
         </div>
       </Panel>
 
