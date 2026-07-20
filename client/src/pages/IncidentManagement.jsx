@@ -10,6 +10,7 @@ import { THREAT, STAGE } from '../utils/tone';
 import { timeAgo } from '../utils/format';
 import { useT } from '../contexts/LanguageContext';
 const STAGES = ['reported', 'investigating', 'response', 'review', 'closed'];
+const SEVERITY_ORDER = ['critical', 'high', 'moderate', 'low'];
 export default function IncidentManagement() {
     const c = useCacco();
     const now = useNow();
@@ -31,6 +32,17 @@ export default function IncidentManagement() {
         return [...map.entries()].sort((a, b) => b[1] - a[1]);
     }, [c.incidents]);
     const maxType = typeDist[0]?.[1] ?? 1;
+    const totalCasualties = useMemo(() => c.incidents.reduce((s, i) => s + i.casualties, 0), [c.incidents]);
+    const oldestOpenMs = useMemo(() => {
+        const openCases = c.incidents.filter((i) => i.stage !== 'closed');
+        return openCases.length ? Math.min(...openCases.map((i) => i.reportedAtMs)) : null;
+    }, [c.incidents]);
+    const severityDist = useMemo(() => {
+        const map = new Map();
+        c.incidents.forEach((i) => map.set(i.severity, (map.get(i.severity) ?? 0) + 1));
+        return SEVERITY_ORDER.filter((s) => map.has(s)).map((s) => [s, map.get(s)]);
+    }, [c.incidents]);
+    const maxSeverity = Math.max(...severityDist.map(([, n]) => n), 1);
     return (<div className="space-y-4">
 
       {newReportModal && (
@@ -90,6 +102,18 @@ export default function IncidentManagement() {
                 </div>
               </div>);
         })}
+          <div className="col-span-full rounded-lg border border-app-border" style={{ background: 'var(--app-bg-deep)' }}>
+            <div className="flex items-center gap-2 px-2.5 py-2" style={{ borderBottom: '1px solid var(--app-border)' }}>
+              <Icon name="gauge" className="w-3.5 h-3.5 text-app-accent"/>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-app-text-muted">{t('inc.summaryTitle')}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-4">
+              <SummaryStat label={t('inc.totalCases')} value={c.incidents.length}/>
+              <SummaryStat label={t('inc.criticalCases')} value={critical} color={critical > 0 ? '#ef4444' : '#10b981'}/>
+              <SummaryStat label={t('inc.casualtiesReported')} value={totalCasualties} color={totalCasualties > 0 ? '#ef4444' : '#10b981'}/>
+              <SummaryStat label={t('inc.oldestOpen')} value={oldestOpenMs ? `${timeAgo(oldestOpenMs, now)} ago` : '—'}/>
+            </div>
+          </div>
         </div>
       </Panel>
 
@@ -123,6 +147,21 @@ export default function IncidentManagement() {
               </div>
               <Meter value={n} max={maxType} color="#38bdf8" height={5}/>
             </div>))}
+          <div className="!mt-4 pt-3" style={{ borderTop: '1px solid var(--app-border-soft)' }}>
+            <SectionLabel className="mb-2">{t('inc.bySeverity')}</SectionLabel>
+            <div className="space-y-2.5">
+              {severityDist.map(([sev, n]) => {
+            const th = THREAT[sev];
+            return (<div key={sev}>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-[11px] text-app-text-muted">{th.label}</span>
+                      <span className="font-mono text-[11px] font-bold text-app-text">{n}</span>
+                    </div>
+                    <Meter value={n} max={maxSeverity} color={th.hex} height={5}/>
+                  </div>);
+        })}
+            </div>
+          </div>
         </Panel>
       </div>
 
@@ -131,6 +170,12 @@ export default function IncidentManagement() {
       {toast && (<div className="fixed bottom-9 right-4 z-[400] animate-slide-up rounded-lg border px-4 py-3 text-xs font-semibold shadow-2xl" style={{ background: 'var(--app-panel-2)', borderColor: 'var(--app-accent-border)', color: 'var(--app-accent)' }}>
           <Icon name="check" className="mr-1.5 inline w-3.5 h-3.5"/>{toast}
         </div>)}
+    </div>);
+}
+function SummaryStat({ label, value, color }) {
+    return (<div className="rounded-md border border-app-border p-2.5" style={{ background: 'var(--app-panel)' }}>
+      <p className="t-label">{label}</p>
+      <p className="mt-1 font-mono text-[15px] font-bold" style={{ color: color ?? 'var(--app-text)' }}>{value}</p>
     </div>);
 }
 function IncidentCard({ inc, now, onClick }) {

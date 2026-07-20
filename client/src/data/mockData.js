@@ -328,6 +328,11 @@ export const PROGRAMS = [
     { id: 'PRG-05', name: 'Reintegration Pathway', category: 'Reintegration', enrolled: 31, capacity: 40, completionRate: 78, facilitator: 'Lic. Brenes' },
     { id: 'PRG-06', name: 'Agricultural Skills', category: 'Vocational', enrolled: 38, capacity: 60, completionRate: 67, facilitator: 'Ing. Castro' },
     { id: 'PRG-07', name: 'Conflict De-escalation', category: 'Psychological', enrolled: 47, capacity: 60, completionRate: 61, facilitator: 'Dra. Núñez' },
+    { id: 'PRG-08', name: 'Digital Literacy & Computing', category: 'Education', enrolled: 54, capacity: 72, completionRate: 69, facilitator: 'Ing. Alvarado' },
+    { id: 'PRG-09', name: 'Welding & Metalwork', category: 'Vocational', enrolled: 33, capacity: 40, completionRate: 74, facilitator: 'Ing. Jiménez' },
+    { id: 'PRG-10', name: 'Trauma & Anger Management', category: 'Psychological', enrolled: 40, capacity: 55, completionRate: 58, facilitator: 'Dra. Campos' },
+    { id: 'PRG-11', name: 'Relapse Prevention Group', category: 'Substance', enrolled: 45, capacity: 66, completionRate: 52, facilitator: 'Lic. Herrera' },
+    { id: 'PRG-12', name: 'Family Reunification', category: 'Reintegration', enrolled: 27, capacity: 36, completionRate: 81, facilitator: 'Lic. Montero' },
 ];
 /* ─── Response teams ────────────────────────────────────────────────── */
 export const TEAMS = [

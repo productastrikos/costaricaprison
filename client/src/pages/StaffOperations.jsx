@@ -153,11 +153,15 @@ export default function StaffOperations() {
               <Icon name="search" className="w-3.5 h-3.5 text-app-text-faint"/>
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('staff.searchStaff')} style={{ width: 170 }}/>
             </div>} bodyClass="flex flex-col min-h-0">
-          <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid var(--app-border)' }}>
+          <div className="flex shrink-0 items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid var(--app-border)' }}>
             <Segmented options={SHIFT_OPTS} value={shift} onChange={setShift}/>
           </div>
-          <div className="overflow-auto" style={{ maxHeight: 520 }}>
-            <table className="dtable">
+          {/* Grid fills the remaining panel height; the inner scroll area is
+              absolutely positioned so the 150-row table fills the gap and
+              scrolls internally without ever inflating the panel itself. */}
+          <div className="relative flex-1" style={{ minHeight: 400 }}>
+            <div className="absolute inset-0 overflow-auto">
+              <table className="dtable">
               <thead>
                 <tr><th>{t('staff.thBadge')}</th><th>{t('staff.thName')}</th><th>{t('staff.thRole')}</th><th>{t('staff.thShift')}</th><th>{t('staff.thStatus')}</th><th>{t('staff.thZone')}</th><th>{t('staff.thClearance')}</th></tr>
               </thead>
@@ -173,6 +177,7 @@ export default function StaffOperations() {
                   </tr>))}
               </tbody>
             </table>
+            </div>
           </div>
         </Panel>
 
